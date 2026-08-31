@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>量化工作台 · FairValpha</title>
+<style>
+  :root{ --bg:#131722; --card:#1e222d; --card2:#262b38; --border:#2a2e39; --text:#d1d4dc;
+         --dim:#b2b5be; --muted:#787b86; --up:#ef5350; --down:#26a69a; --gold:#f5c96a; --blue:#5b9cf6; }
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  body{ background:var(--bg); color:var(--text);
+        font-family:-apple-system,"Segoe UI","Microsoft YaHei",sans-serif; padding:16px 18px 60px; }
+  .wrap{ max-width:1280px; margin:0 auto; }
+  header{ display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:12px; }
+  h1{ font-size:19px; }
+  .tabs{ display:flex; gap:4px; }
+  .tab{ padding:5px 14px; border:1px solid var(--border); border-radius:8px; cursor:pointer;
+        font-size:13px; color:var(--dim); background:var(--card); }
+  .tab.on{ color:var(--gold); border-color:var(--gold); }
+  .tab.dis{ opacity:.45; cursor:default; }
+  .mkt{ margin-left:auto; display:flex; gap:4px; }
+  .mkt button{ padding:5px 14px; font-size:13px; border:1px solid var(--border); background:var(--card);
+               color:var(--dim); border-radius:8px; cursor:pointer; }
+  .mkt button.on{ color:var(--gold); border-color:var(--gold); }
+  #metabar{ display:flex; gap:14px; flex-wrap:wrap; font-size:12px; color:var(--dim);
+            background:var(--card); border:1px solid var(--border); border-radius:10px;
+            padding:8px 14px; margin-bottom:12px; }
+  #metabar b{ color:var(--text); }
+  .badge{ padding:1px 8px; border-radius:99px; font-size:11px; border:1px solid var(--border); }
+  .bull{ color:var(--up); border-color:var(--up); } .bear{ color:var(--down); border-color:var(--down); }
+  .rangeS{ color:var(--gold); border-color:var(--gold); }
+  .cols{ display:grid; grid-template-columns:330px 1fr; gap:12px; }
+  @media (max-width:960px){ .cols{ grid-template-columns:1fr; } }
+  .panel{ background:var(--card); border:1px solid var(--border); border-radius:10px; padding:12px; }
+  .panel h2{ font-size:13px; color:var(--gold); margin-bottom:8px; }
+  .grp{ border:1px dashed var(--border); border-radius:8px; padding:8px; margin-bottom:8px; }
+  .grp .ghead{ font-size:11px; color:var(--muted); margin-bottom:6px; display:flex; justify-content:space-between; }
+  .cond{ display:flex; gap:4px; margin-bottom:5px; align-items:center; flex-wrap:wrap; }
+  select,input,button{ background:var(--card2); color:var(--text); border:1px solid var(--border);
+        border-radius:6px; padding:4px 6px; font-size:12px; font-family:inherit; }
+  input{ width:64px; }
+  input.wide{ width:100px; }
+  button{ cursor:pointer; }
+  button:hover{ border-color:var(--gold); }
+  .x{ color:var(--muted); border:none; background:none; font-size:14px; padding:0 4px; }
+  .x:hover{ color:var(--up); }
+  .addrow{ font-size:12px; margin-top:4px; display:flex; gap:6px; }
+  .preset{ border:1px solid var(--border); border-radius:8px; padding:8px 10px; margin-bottom:6px;
+           cursor:pointer; font-size:12.5px; }
+  .preset:hover{ border-color:var(--gold); }
+  .preset .pn{ color:var(--text); font-weight:600; }
+  .preset .pe{ color:var(--muted); font-size:11.5px; margin-top:3px; line-height:1.5; }
+  .ev-star{ color:var(--gold); } .ev-warn{ color:var(--up); } .ev-lab{ color:var(--blue); }
+  #resmeta{ display:flex; gap:12px; align-items:center; flex-wrap:wrap; font-size:12.5px;
+            color:var(--dim); margin-bottom:8px; }
+  #resmeta b{ color:var(--gold); font-size:15px; }
+  .scroll{ overflow-x:auto; }
+  table{ border-collapse:collapse; font-size:12px; width:100%; }
+  th{ text-align:right; color:var(--muted); font-weight:500; padding:4px 7px; cursor:pointer;
+      border-bottom:1px solid var(--border); white-space:nowrap; user-select:none; position:sticky; top:0; background:var(--card); }
+  th:first-child,th:nth-child(2),th:nth-child(3){ text-align:left; }
+  td{ padding:4px 7px; border-bottom:1px solid rgba(42,46,57,.5); white-space:nowrap;
+      text-align:right; font-variant-numeric:tabular-nums; }
+  td:first-child,td:nth-child(2),td:nth-child(3){ text-align:left; }
+  tr:hover td{ background:rgba(91,156,246,.06); }
+  .up{ color:var(--up); } .down{ color:var(--down); } .muted{ color:var(--muted); }
+  a{ color:var(--blue); text-decoration:none; }
+  .note{ font-size:11px; color:var(--muted); margin-top:8px; line-height:1.6; }
+  .savebar{ display:flex; gap:6px; margin-top:8px; flex-wrap:wrap; }
+  .placeholder{ padding:60px 20px; text-align:center; color:var(--muted); font-size:14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>量化工作台</h1>
+    <div class="tabs">
+      <div class="tab on" id="tabScan">筛选器</div>
+      <div class="tab dis" title="W2 建设中">信号台</div>
+      <div class="tab dis" title="W3 建设中">策略实验室</div>
+    </div>
+    <a href="/rightside/" style="font-size:12px">→ 右侧影子监控</a>
+    <div class="mkt">
+      <button id="mA" class="on">A股</button><button id="mU">美股</button>
+    </div>
+  </header>
+
+  <div id="metabar">加载中…</div>
+
+  <div class="cols">
+    <div>
+      <div class="panel" style="margin-bottom:12px">
+        <h2>筛选条件 <span class="muted" style="font-weight:400">（组内 AND，组间 OR）</span></h2>
+        <div id="groups"></div>
+        <div class="addrow">
+          <button id="addGrp">+ 或组</button>
+          <button id="runBtn" style="color:var(--gold);border-color:var(--gold)">▶ 运行筛选</button>
+          <button id="clearBtn">清空</button>
+        </div>
+        <div class="savebar">
+          <input class="wide" id="saveName" placeholder="方案名">
+          <button id="saveBtn">保存</button>
+          <select id="loadSel" style="max-width:130px"><option value="">载入方案…</option></select>
+          <button id="delBtn">删</button>
+        </div>
+        <div class="note">证据标注：<span class="ev-star">★研究已证</span> ·
+          <span class="ev-warn">⚠️反向证据</span> · <span class="ev-lab">🔬研究中/未过准入</span><br>
+          出处：九年/十年回测 + 大涨解剖（stock-core/research）。荐股非投资建议。</div>
+      </div>
+      <div class="panel">
+        <h2>预设模板（荐股 · 带战绩出处）</h2>
+        <div id="presets"></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div id="resmeta"></div>
+      <div class="scroll" style="max-height:72vh;overflow-y:auto"><table id="resTbl"></table></div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ================= 字段注册表 ================= */
+const EV = (a,u)=>({a,u});   // 每市场证据 {grade,note}
+const S="star", W="warn", L="lab";
+const FIELDS_META = [
+ {k:"code",l:"代码",g:"基础",t:"str"},
+ {k:"name",l:"名称",g:"基础",t:"str"},
+ {k:"industry",l:"行业/板块",g:"基础",t:"str"},
+ {k:"close",l:"收盘价",g:"基础",t:"num"},
+ {k:"chg1",l:"当日涨跌%",g:"基础",t:"num",pct:1},
+ {k:"gap",l:"跳空%",g:"技术",t:"num",pct:1},
+ {k:"ret5",l:"5日涨幅%",g:"动量",t:"num",pct:1},
+ {k:"ret20",l:"20日涨幅%",g:"动量",t:"num",pct:1},
+ {k:"ret60",l:"60日涨幅%",g:"动量",t:"num",pct:1},
+ {k:"ret120",l:"120日涨幅%",g:"动量",t:"num",pct:1},
+ {k:"ret40",l:"40日涨幅%（慢爬≤15）",g:"动量",t:"num",pct:1,ev:EV({g:S,n:"慢爬两市皆优(R0.5)"},{g:S,n:"慢爬两市皆优(R0.5)"})},
+ {k:"rebound120",l:"距120日低点反弹%（A字位置）",g:"位置",t:"num",pct:1,ev:EV({g:L,n:"+25%确认→+50%兑现为A股可交易段(仅2024+为正)"},null)},
+ {k:"dd250",l:"距250日高点%",g:"位置",t:"num",pct:1},
+ {k:"dist_hi60",l:"距60日高点%",g:"位置",t:"num",pct:1},
+ {k:"ma20_rel",l:"距MA20%",g:"均线",t:"num",pct:1},
+ {k:"ma50_rel",l:"距MA50%",g:"均线",t:"num",pct:1},
+ {k:"ma200_rel",l:"距MA200%",g:"均线",t:"num",pct:1},
+ {k:"ma_stack",l:"均线多头排列",g:"均线",t:"bool"},
+ {k:"trend_up",l:"趋势多头(价>MA50>MA200)",g:"均线",t:"bool"},
+ {k:"box_amp30",l:"30日箱体振幅%",g:"形态",t:"num",ev:EV({g:W,n:"极紧箱体(≤10%)更差(M1④)"},{g:S,n:"缩量蓄势美股有效(M1⑤)"})},
+ {k:"box_pos30",l:"箱体内位置(0-1)",g:"形态",t:"num"},
+ {k:"vc",l:"缩量比(10日/前20日)",g:"量能",t:"num",ev:EV({g:L,n:"A股缩量反弹更持久"},{g:S,n:"vc≤0.55美股蓄势已证"})},
+ {k:"volratio",l:"量比(今/5日)",g:"量能",t:"num",ev:EV({g:W,n:"A股放量=出货, fwd120最差桶(R0.5)"},{g:S,n:"美股放量=确认(R0.5)"})},
+ {k:"volexp",l:"量能扩张(20日/120日)",g:"量能",t:"num",ev:EV({g:W,n:"A股放量反向"},{g:S,n:"美股正向"})},
+ {k:"amt20",l:"20日均额",g:"量能",t:"num"},
+ {k:"amt_pct",l:"成交额全市场分位",g:"量能",t:"num"},
+ {k:"atr_pct",l:"ATR20%",g:"波动",t:"num"},
+ {k:"vol_ann",l:"年化波动率%",g:"波动",t:"num"},
+ {k:"boll_pos",l:"布林位置(-1~1)",g:"波动",t:"num"},
+ {k:"rsi14",l:"RSI14",g:"技术",t:"num"},
+ {k:"macd_dif",l:"MACD DIF",g:"技术",t:"num"},
+ {k:"macd_hist",l:"MACD 柱",g:"技术",t:"num"},
+ {k:"macd_state",l:"MACD 状态",g:"技术",t:"enum",opts:["金叉","死叉","多","空"]},
+ {k:"rps63",l:"RPS63 分位",g:"相对强度",t:"num",ev:EV({g:W,n:"A股高RPS摸高多拿不住"},{g:S,n:"美股动量单调有效"})},
+ {k:"rps120",l:"RPS120 分位",g:"相对强度",t:"num",ev:EV({g:W,n:"同上"},{g:S,n:"同上"})},
+ {k:"rps250",l:"RPS250 分位",g:"相对强度",t:"num"},
+ {k:"ind_wind",l:"行业顺风(60日中位-指数)pp",g:"相对强度",t:"num",ev:EV({g:L,n:"A股温和顺风(0~20)最好, 过热反向"},{g:S,n:"美股单调有效, 准入策略成分"})},
+ {k:"consec",l:"连阳(+)/连阴(-)",g:"技术",t:"num"},
+ {k:"newhigh250",l:"250日新鲜上穿(5日内)",g:"信号旗",t:"bool",ev:EV({g:W,n:"A股追突破负期望(M1①)"},{g:S,n:"美股准入策略入场"})},
+ {k:"reclaim",l:"趋势内回踩收复(R2口径)",g:"信号旗",t:"bool",ev:EV({g:L,n:"未过准入(R2 v2)"},null)},
+ {k:"a25",l:"+25%确认(5日内)",g:"信号旗",t:"bool",ev:EV({g:L,n:"仅2024+为正(R2 v3), 反弹家族"},null)},
+ {k:"pe",l:"PE-TTM",g:"估值",t:"num",ev:EV({g:W,n:"绝对低PE=价值陷阱(R0.5d)"},null)},
+ {k:"pb",l:"PB",g:"估值",t:"num"},
+ {k:"psr",l:"PS-TTM",g:"估值",t:"num"},
+ {k:"mcap",l:"总市值(亿)",g:"估值",t:"num",ev:EV({g:S,n:"小盘效应bull态单调(R0.5d)"},null)},
+ {k:"pe_pct",l:"PE自身历史分位",g:"估值",t:"num",ev:EV({g:S,n:"分位有效, 绝对值无效"},null)},
+ {k:"ps_pct",l:"PS自身历史分位",g:"估值",t:"num",ev:EV({g:S,n:"队列已证: bull态Q1低分位fwd120 +8.7%(策略层未证)"},null)},
+ {k:"ev90",l:"90日业绩预告",g:"事件",t:"enum",opts:["pos","neg","mixed","other","none"],ev:EV({g:S,n:"×牛市+4.1%vs+1.4%; 单独弱(R0.5c)"},null)},
+];
+const FM = Object.fromEntries(FIELDS_META.map(f=>[f.k,f]));
+const DEFAULT_COLS = ["code","name","industry","close","chg1","ret20","ret120","dd250","rps120","ind_wind","vc","pe","ps_pct","mcap","ev90"];
+
+/* ================= 预设 ================= */
+const PRESETS = {
+ a: [
+  {n:"温和顺风 · 慢爬多头", ev:"🔬 R2v2最佳过滤组合方向(样本外@2x≈0, 未过准入): bull态+慢爬+温和行业 曾avg+1.18%", tag:L,
+   conds:[["trend_up","is",1],["ret120",">=",25],["ret40","<=",15],["ind_wind","between",0,20]]},
+  {n:"PS低分位 · 牛市配合", ev:"★ 队列已证: bull态 PS自身分位Q1 fwd120中位+8.7% (Q4为-2.3%); 注意策略层未单独成立", tag:S,
+   conds:[["ps_pct","<=",25],["amt_pct",">=",30],["trend_up","is",1]]},
+  {n:"业绩预告 × 趋势", ev:"★ 正面预告×牛市 fwd120 +4.1% vs 无预告+1.4% (R0.5c); 单独使用无效", tag:S,
+   conds:[["ev90","eq","pos"],["trend_up","is",1]]},
+  {n:"深跌接近前低 (左侧风)", ev:"🪸 深回撤态两市fwd20皆最高(R0, 均值回归); 完整左侧逻辑见主工作台", tag:L,
+   conds:[["dd250","<=",-40],["rebound120","<=",8],["amt_pct",">=",25]]},
+  {n:"蓄势缩量箱体 ⚠️", ev:"⚠️ A股追突破九年负期望(M1①), 生产端已停发此类买点 — 仅供观察, 勿追突破", tag:W,
+   conds:[["box_amp30","<=",15],["vc","<=",0.75],["ret120",">=",10],["box_pos30",">=",0.3]]},
+ ],
+ us: [
+  {n:"★ 右侧准入策略 (影子在跑)", ev:"★ 唯一过三硬门: 250日新鲜上穿×行业顺风×持有60日, DEV@2x +1.88%/HOLD +1.02%, ±20%九变体全正", tag:S,
+   conds:[["newhigh250","is",1],["ind_wind",">",0]]},
+  {n:"缩量蓄势突破候选", ev:"★ M1⑤: 缩量蓄势仅美股有效 (vc≤0.55: 21.8%→26.1%); R1 coil×顺风×E60 avg+1.73%(n325)", tag:S,
+   conds:[["box_amp30","<=",15],["vc","<=",0.55],["ret120",">=",10]]},
+  {n:"动量三重奏", ev:"★ 美股RPS单调有效+行业顺风单调+多头排列 (R0.5); 慢启动亦强", tag:S,
+   conds:[["rps120",">=",85],["ind_wind",">",0],["ma_stack","is",1]]},
+  {n:"慢牛爬坡", ev:"★ 慢爬(40日≤15%)桶 fwd120 +6.55% 两市最优 (R0.5)", tag:S,
+   conds:[["ret120",">=",25],["ret40","<=",15],["trend_up","is",1]]},
+ ]
+};
+
+/* ================= 状态 ================= */
+let MKT="a", DATA=null, IDXOF={}, groups=[], sortKey="ret20", sortDesc=true, cols=[...DEFAULT_COLS];
+const $=s=>document.querySelector(s);
+
+function evBadge(f){
+  const e=f.ev && f.ev[MKT==="a"?"a":"u"];
+  if(!e) return "";
+  const sym=e.g===S?"★":(e.g===W?"⚠️":"🔬");
+  const c=e.g===S?"ev-star":(e.g===W?"ev-warn":"ev-lab");
+  return ` <span class="${c}" title="${e.n}">${sym}</span>`;
+}
+function fieldOptions(sel){
+  const groupsMap={};
+  FIELDS_META.forEach(f=>{ if(f.t==="str")return; (groupsMap[f.g]=groupsMap[f.g]||[]).push(f); });
+  let h="";
+  for(const g in groupsMap){
+    h+=`<optgroup label="${g}">`+groupsMap[g].map(f=>`<option value="${f.k}" ${f.k===sel?"selected":""}>${f.l}</option>`).join("")+`</optgroup>`;
+  }
+  return h;
+}
+function opOptions(f,sel){
+  const t=FM[f].t;
+  let ops;
+  if(t==="bool") ops=[["is","是"],["not","否"]];
+  else if(t==="enum") ops=[["eq","="],["ne","≠"]];
+  else ops=[[">",">"],["<","<"],[">=","≥"],["<=","≤"],["between","区间"],["topP","市场前%"],["botP","市场后%"],["vsF","对字段×"]];
+  return ops.map(([v,l])=>`<option value="${v}" ${v===sel?"selected":""}>${l}</option>`).join("");
+}
+function condHTML(gi,ci,c){
+  const f=FM[c[0]], op=c[1], t=f.t;
+  let inputs="";
+  if(t==="bool") inputs="";
+  else if(t==="enum") inputs=`<select data-r="v1">${(f.opts||[]).map(o=>`<option ${o===c[2]?"selected":""}>${o}</option>`).join("")}</select>`;
+  else if(op==="between") inputs=`<input data-r="v1" value="${c[2]??""}"> ~ <input data-r="v2" value="${c[3]??""}">`;
+  else if(op==="vsF") inputs=`<select data-r="vf">${fieldOptions(c[2])}</select><input data-r="v2" value="${c[3]??1}" title="倍数">`;
+  else inputs=`<input data-r="v1" value="${c[2]??""}">`;
+  return `<div class="cond" data-g="${gi}" data-c="${ci}">
+    <select data-r="f">${fieldOptions(c[0])}</select>
+    <select data-r="op">${opOptions(c[0],op)}</select>${inputs}
+    <span>${evBadge(f)}</span>
+    <button class="x" data-r="del">✕</button></div>`;
+}
+function render(){
+  $("#groups").innerHTML = groups.map((g,gi)=>`<div class="grp">
+    <div class="ghead"><span>条件组 ${gi+1}（AND）</span>
+      <span><button class="x" data-r="addc" data-g="${gi}">＋条件</button>
+      ${groups.length>1?`<button class="x" data-r="delg" data-g="${gi}">✕组</button>`:""}</span></div>
+    ${g.map((c,ci)=>condHTML(gi,ci,c)).join("")}</div>`).join("");
+}
+function readUI(){
+  document.querySelectorAll(".cond").forEach(el=>{
+    const gi=+el.dataset.g, ci=+el.dataset.c, c=groups[gi][ci];
+    c[0]=el.querySelector('[data-r="f"]').value;
+    c[1]=el.querySelector('[data-r="op"]').value;
+    const v1=el.querySelector('[data-r="v1"]'), v2=el.querySelector('[data-r="v2"]'), vf=el.querySelector('[data-r="vf"]');
+    if(FM[c[0]].t==="enum") c[2]=v1?v1.value:c[2];
+    else if(c[1]==="vsF"){ c[2]=vf?vf.value:c[2]; c[3]=v2?parseFloat(v2.value):1; }
+    else { c[2]=v1&&v1.value!==""?parseFloat(v1.value):null; c[3]=v2&&v2.value!==""?parseFloat(v2.value):null; }
+  });
+}
+$("#groups").addEventListener("change",e=>{ readUI(); if(e.target.dataset.r==="f"||e.target.dataset.r==="op") render(); });
+$("#groups").addEventListener("click",e=>{
+  const r=e.target.dataset.r;
+  if(r==="del"){ readUI(); const el=e.target.closest(".cond"); groups[+el.dataset.g].splice(+el.dataset.c,1); render(); }
+  if(r==="addc"){ readUI(); groups[+e.target.dataset.g].push(["ret20",">",0,null]); render(); }
+  if(r==="delg"){ readUI(); groups.splice(+e.target.dataset.g,1); render(); }
+});
+$("#addGrp").onclick=()=>{ readUI(); groups.push([["ret20",">",0,null]]); render(); };
+$("#clearBtn").onclick=()=>{ groups=[[["trend_up","is",1,null]]]; render(); run(); };
+
+/* ================= 筛选执行 ================= */
+function colIdx(k){ return IDXOF[k]; }
+function passCond(row,c,pctCache){
+  const [k,op,v1,v2]=c, x=row[colIdx(k)];
+  if(op==="is") return x===true;
+  if(op==="not") return x===false;
+  if(x==null) return false;
+  if(op==="eq") return x===v1;
+  if(op==="ne") return x!==v1;
+  if(op===">") return x>v1;
+  if(op==="<") return x<v1;
+  if(op===">=") return x>=v1;
+  if(op==="<=") return x<=v1;
+  if(op==="between") return x>=Math.min(v1,v2)&&x<=Math.max(v1,v2);
+  if(op==="topP"||op==="botP"){
+    let arr=pctCache[k];
+    if(!arr){ arr=DATA.rows.map(r=>r[colIdx(k)]).filter(v=>v!=null).sort((a,b)=>a-b); pctCache[k]=arr; }
+    const rank=(arr.length-lowerBound(arr,x))/arr.length*100;   // 前%: 值越大排名越前
+    return op==="topP"? rank<=v1 : (lowerBound(arr,x)/arr.length*100)<=v1;
+  }
+  if(op==="vsF"){ const y=row[colIdx(v1)]; return y!=null && x > y*(v2??1); }
+  return true;
+}
+function lowerBound(a,x){ let lo=0,hi=a.length; while(lo<hi){const m=(lo+hi)>>1; if(a[m]<x)lo=m+1;else hi=m;} return lo; }
+let lastRows=[];
+function run(){
+  if(!DATA) return;
+  readUI();
+  const pctCache={};
+  const out=[];
+  for(const row of DATA.rows){
+    let ok=false;
+    for(const g of groups){
+      if(g.every(c=>passCond(row,c,pctCache))){ ok=true; break; }
+    }
+    if(ok) out.push(row);
+  }
+  lastRows=out;
+  drawTable();
+}
+function drawTable(){
+  const si=colIdx(sortKey);
+  const rows=[...lastRows].sort((a,b)=>{
+    const x=a[si],y=b[si];
+    if(x==null)return 1; if(y==null)return -1;
+    return sortDesc? (y>x?1:-1):(x>y?1:-1);
+  });
+  const topN=Math.min(rows.length, 500);
+  $("#resmeta").innerHTML=`命中 <b>${lastRows.length}</b> 只 · 显示前 ${topN} · 排序: ${FM[sortKey].l}${sortDesc?"↓":"↑"}
+    <button id="csvBtn">导出CSV</button>`;
+  $("#csvBtn").onclick=exportCSV;
+  const head=cols.map(k=>`<th data-k="${k}">${FM[k].l}${k===sortKey?(sortDesc?" ↓":" ↑"):""}</th>`).join("");
+  const body=rows.slice(0,topN).map(r=>{
+    return "<tr>"+cols.map(k=>{
+      let v=r[colIdx(k)];
+      if(v==null) return '<td class="muted">—</td>';
+      if(k==="code"){
+        const url=MKT==="a"?`https://quote.eastmoney.com/${v.startsWith("6")?"sh":"sz"}${v}.html`:`https://www.tradingview.com/chart/?symbol=${v}`;
+        return `<td><a href="${url}" target="_blank">${v}</a></td>`;
+      }
+      if(typeof v==="boolean") return `<td>${v?"✓":""}</td>`;
+      if(FM[k].pct||["chg1","gap"].includes(k)){
+        const c=v>0?"up":(v<0?"down":"");
+        return `<td class="${c}">${v}%</td>`;
+      }
+      return `<td>${v}</td>`;
+    }).join("")+"</tr>";
+  }).join("");
+  $("#resTbl").innerHTML=`<tr>${head}</tr>${body}`;
+  document.querySelectorAll("th").forEach(th=>th.onclick=()=>{
+    const k=th.dataset.k;
+    if(sortKey===k) sortDesc=!sortDesc; else { sortKey=k; sortDesc=true; }
+    drawTable();
+  });
+}
+function exportCSV(){
+  const head=cols.map(k=>FM[k].l).join(",");
+  const lines=lastRows.map(r=>cols.map(k=>{const v=r[colIdx(k)];return v==null?"":String(v).replace(/,/g,"，");}).join(","));
+  const blob=new Blob(["﻿"+head+"\n"+lines.join("\n")],{type:"text/csv"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob); a.download=`scan_${MKT}_${DATA.meta.generated}.csv`; a.click();
+}
+
+/* ================= 预设/保存 ================= */
+function drawPresets(){
+  $("#presets").innerHTML=PRESETS[MKT].map((p,i)=>`<div class="preset" data-i="${i}">
+    <div class="pn">${p.n}</div><div class="pe">${p.ev}</div></div>`).join("");
+  document.querySelectorAll(".preset").forEach(el=>el.onclick=()=>{
+    groups=[PRESETS[MKT][+el.dataset.i].conds.map(c=>[...c])];
+    render(); run();
+  });
+}
+const LSKEY="fv_lab_screens_v1";
+function loadSaved(){
+  let s={}; try{s=JSON.parse(localStorage.getItem(LSKEY)||"{}")}catch(e){}
+  $("#loadSel").innerHTML='<option value="">载入方案…</option>'+Object.keys(s).map(n=>`<option>${n}</option>`).join("");
+  return s;
+}
+$("#saveBtn").onclick=()=>{
+  const n=$("#saveName").value.trim(); if(!n)return;
+  readUI(); const s=loadSaved(); s[n]={m:MKT,g:groups};
+  try{localStorage.setItem(LSKEY,JSON.stringify(s))}catch(e){}
+  loadSaved();
+};
+$("#loadSel").onchange=e=>{
+  const s=loadSaved()[e.target.value]; if(!s)return;
+  groups=s.g; render(); run();
+};
+$("#delBtn").onclick=()=>{
+  const n=$("#loadSel").value; if(!n)return;
+  const s=loadSaved(); delete s[n];
+  try{localStorage.setItem(LSKEY,JSON.stringify(s))}catch(e){}
+  loadSaved();
+};
+
+/* ================= 加载 ================= */
+function setMkt(m){
+  MKT=m;
+  $("#mA").classList.toggle("on",m==="a"); $("#mU").classList.toggle("on",m==="us");
+  boot();
+}
+$("#mA").onclick=()=>setMkt("a"); $("#mU").onclick=()=>setMkt("us");
+function boot(){
+  $("#metabar").textContent="加载中…";
+  fetch(`./factors_${MKT}.json`,{cache:"no-store"}).then(r=>{
+    if(!r.ok) throw new Error("HTTP "+r.status);
+    return r.json();
+  }).then(d=>{
+    DATA=d; IDXOF=Object.fromEntries(d.fields.map((k,i)=>[k,i]));
+    const m=d.meta;
+    const rb=m.regime==="bull"?'<span class="badge bull">牛市</span>':(m.regime==="bear"?'<span class="badge bear">熊市</span>':`<span class="badge rangeS">${m.regime==="range"?"震荡":m.regime}</span>`);
+    $("#metabar").innerHTML=`<span>数据日 <b>${m.generated}</b></span><span>regime ${rb}</span>
+      <span>波动率态 <b>${m.vol_state}</b></span><span>指数 20日 <b class="${m.idx.ret20>0?"up":"down"}">${m.idx.ret20}%</b></span>
+      <span>距250日高点 <b>${m.idx.dist_hi250}%</b></span><span>股票池 <b>${m.n}</b> 只</span>
+      <span class="muted">因子 ${d.fields.length} 项 · 每交易日晚自动更新</span>`;
+    if(!groups.length) groups=[[["trend_up","is",1,null]]];
+    render(); drawPresets(); loadSaved(); run();
+  }).catch(e=>{
+    $("#metabar").innerHTML=`<span class="up">factors_${MKT}.json 加载失败: ${e.message}（服务器任务尚未生成或路径错误）</span>`;
+    $("#resTbl").innerHTML=""; $("#resmeta").textContent="";
+  });
+}
+boot();
+</script>
+</body>
+</html>
