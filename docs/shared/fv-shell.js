@@ -106,12 +106,27 @@
     var last = null;
     var tick = function () {
       var v = document.documentElement.getAttribute("data-theme") === "light";
-      if (document.body) document.body.classList.toggle("light", v);
+      // 内嵌时不挂 body.light: 令牌一律走 :root (父页注入 + .fv-embed 映射), 否则
+      // body 上的浅色块会盖住注入值, iframe 里就跟父工作台不是同一张皮。
+      if (document.body && !EMBED) document.body.classList.toggle("light", v);
       if (v !== last) { last = v; api.isLightNow = v; fire(themeCbs, v); }
     };
     tick();
     new MutationObserver(tick).observe(document.documentElement,
       { attributes: true, attributeFilter: ["data-theme"] });
+  }
+
+  /* 内嵌时等父工作台把 #fvOverride 注进来 (旧名令牌), 到了才挂 .fv-embed 做名字映射 */
+  function watchEmbedSkin() {
+    if (!EMBED) return;
+    var root = document.documentElement, tries = 0;
+    var chk = function () {
+      var has = getComputedStyle(root).getPropertyValue("--surface").trim() !== "";
+      root.classList.toggle("fv-embed", has);
+      if (!has && ++tries < 60) setTimeout(chk, 150);
+    };
+    chk();
+    new MutationObserver(chk).observe(root, { attributes: true, attributeFilter: ["data-theme"] });
   }
 
   /* ------------------------------------------------------------ 事件回调 */
@@ -241,7 +256,7 @@
     if (mqLight.addEventListener) mqLight.addEventListener("change", onMq);
     else if (mqLight.addListener) mqLight.addListener(onMq);
   }
-  function boot() { applyTheme(); build(); paint(); watchTheme(); }
+  function boot() { applyTheme(); build(); paint(); watchTheme(); watchEmbedSkin(); }
   if (document.body) boot();
   else document.addEventListener("DOMContentLoaded", boot, { once: true });
 })();

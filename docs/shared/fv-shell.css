@@ -4,8 +4,18 @@
    产物镜像: stock-screener/docs/shared/fv-shell.css  (与 leftside_shared.js 同规矩)
    规格: stock-core/design/mobile_nav_spec.md §6
    ----------------------------------------------------------------------------
-   令牌与两市工作台 dashboard/index.html 完全同名同值 (深海军蓝系), 子站从此与
-   工作台同皮肤; 白天模式由 body.light / html[data-theme="light"] 触发。
+   令牌与两市工作台 dashboard/index.html 的 :root/body.light 同名同值 (深海军蓝系),
+   白天模式由 body.light / html[data-theme="light"] 触发。
+
+   ⚠ 已知不一致 (2026-09-07 实测, 待 GM 裁决, 别当 bug 顺手改这里):
+   两市 dashboard/index.html 里有**两套** :root —— L20/L30 是本文件抄的海军蓝,
+   L101/L103 的 "终端风皮肤 (TV)" 又把同名令牌盖成 TradingView 灰蓝
+   (dark #131722/#1e222d/#2a2e39, light #ffffff/#e0e3eb)。后者在后, 所以
+   **工作台线上实际渲染的是灰蓝那套** (已在 https://fairvalpha.com/us/ 取过计算值)。
+   即: 老板要的"子站统一到工作台主色", 真正对齐点应该由 GM 定 ——
+   ① 把工作台 L101/L103 那块改成海军蓝 (推荐, 规格 §0 就是这么假设的), 或
+   ② 把本文件这两块换成灰蓝。改哪边都只动一处, 子站会整体跟随。
+   内嵌 iframe 的场景已经与此无关: 见下面 .fv-embed, 它直接吃父页注入值。
 
    ★ 颜色铁律 (老板 2026-09-07 拍板, 状态色 B 案) ★
    1. 数字方向 = 红涨绿跌: --up 红 / --down 绿, **裸色数字, 不加底色**。
@@ -100,6 +110,18 @@
 
 /* 页面主体给 sticky 页头留出锚点余量 */
 html{ scroll-padding-top:56px; }
+
+/* ------------------------------------------------- 被工作台 iframe 内嵌时 */
+/* 父工作台经 #fvOverride 注入的是"旧名"令牌 (VMAP: --surface/--ink/--ink2/--line/
+   --hair/--th/--chipbg)。这里把旧名接回新名 —— iframe 里的皮肤于是 100% 等于父页
+   当下的皮肤, 与本文件的默认取值无关 (工作台哪天换皮, 内嵌子站自动跟着换)。
+   .fv-embed 只在真的收到注入时才由 fv-shell.js 挂上; 跨域内嵌拿不到注入就不挂,
+   走本文件默认令牌, 不会出现"浅底深卡片"的半吊子状态。 */
+:root.fv-embed{
+  --card:var(--surface); --text:var(--ink); --dim:var(--ink2);
+  --border:var(--line); --head:var(--th); --input:var(--chipbg);
+  --inputborder:var(--line); --gridline:var(--line); --rowhover:var(--chipbg);
+}
 
 /* -------------------------------------------------------- 共享语义组件 */
 /* 板块小标题: 与工作台 .sec-title 同款 (3px 蓝条 + 正文色) */
