@@ -165,7 +165,8 @@
       s_total:"含表级拆分", s_unrated:"不判新鲜度 {n} 个", s_size:"物理文件去重后",
       th_name:"数据集 Dataset", th_state:"状态 State", th_rows:"行数 Rows", th_codes:"代码数 Codes",
       th_span:"时间跨度 Span", th_updated:"更新时间 Updated", th_cadence:"节奏 Cadence", th_size:"体量 Size",
-      p_fresh:"新鲜", p_stale:"陈旧", p_na:"—",
+      p_fresh:"新鲜", p_stale:"陈旧", p_na:"—", p_frozen:"冻结",
+      alert_note:"看板产物 / 研究产物落后会推方糖告警 (微信); 冻结中的库 (如估值库等 Tushare P3) 不判也不告警。",
       f_all:"全部", f_stale:"只看陈旧", none:"没有符合条件的数据集",
       err:"catalog.json 读不到 —— 目录还没跑过, 或产物没同步到本站。",
       mkt_a:"A股", mkt_us:"美股", mkt_cross:"跨市 / 运维",
@@ -178,7 +179,8 @@
       s_total:"tables counted separately", s_unrated:"{n} not rated", s_size:"deduped by file",
       th_name:"Dataset", th_state:"State", th_rows:"Rows", th_codes:"Codes",
       th_span:"Span", th_updated:"Updated", th_cadence:"Cadence", th_size:"Size",
-      p_fresh:"Fresh", p_stale:"Stale", p_na:"—",
+      p_fresh:"Fresh", p_stale:"Stale", p_na:"—", p_frozen:"Frozen",
+      alert_note:"A stale dashboard or research output raises a Server酱 (WeChat) alert; frozen stores (e.g. the valuation store awaiting Tushare P3) are neither rated nor alerted.",
       f_all:"All", f_stale:"Stale only", none:"No dataset matches",
       err:"catalog.json unavailable — the catalog has not run yet, or the output is not synced here.",
       mkt_a:"A-share", mkt_us:"US", mkt_cross:"Cross / Ops",
@@ -264,6 +266,8 @@
       }
       var pill = d.fresh === true  ? '<span class="pill ok">' + esc(t("p_fresh")) + "</span>"
                : d.fresh === false ? '<span class="pill bad">' + esc(t("p_stale")) + "</span>"
+               : d.frozen          ? '<span class="pill na" title="' + esc((d.frozen.since || "") + " → " +
+                                     (d.frozen.until || "")) + '">' + esc(t("p_frozen")) + "</span>"
                : '<span class="pill na">' + esc(t("p_na")) + "</span>";
       var expl = (d.fresh === false && d.expected_date)
         ? '<div class="meta">' + esc(t("exp")) + " " + esc(d.expected_date) + "</div>" : "";
@@ -293,8 +297,9 @@
     if(!DATA) return;
     document.getElementById("asof").textContent =
       DATA.generated + " · " + t("host") + " " + (DATA.host || "?") + " · " + DATA.elapsed_s + "s";
-    document.getElementById("ruleTxt").textContent =
-      (lang() === "en" ? (DATA.rule_en || DATA.rule) : DATA.rule) || "";
+    var rtxt = ((lang() === "en" ? (DATA.rule_en || DATA.rule) : DATA.rule) || "");
+    if(!DATA.alert) rtxt += (rtxt ? " " : "") + t("alert_note");   // 旧 catalog.json 没有告警口径, 页面补
+    document.getElementById("ruleTxt").textContent = rtxt;
     document.getElementById("foot").textContent =
       t("foot") + (DATA.errors && DATA.errors.length ? "  ⚠ " + DATA.errors.join(" · ") : "");
     renderTiles(); renderTable();
