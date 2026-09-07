@@ -7,23 +7,25 @@
    令牌与两市工作台 dashboard/index.html 的 :root/body.light 同名同值 (深海军蓝系),
    白天模式由 body.light / html[data-theme="light"] 触发。
 
-   ⚠ 已知不一致 (2026-09-07 实测, 待 GM 裁决, 别当 bug 顺手改这里):
-   两市 dashboard/index.html 里有**两套** :root —— L20/L30 是本文件抄的海军蓝,
-   L101/L103 的 "终端风皮肤 (TV)" 又把同名令牌盖成 TradingView 灰蓝
-   (dark #131722/#1e222d/#2a2e39, light #ffffff/#e0e3eb)。后者在后, 所以
-   **工作台线上实际渲染的是灰蓝那套** (已在 https://fairvalpha.com/us/ 取过计算值)。
-   即: 老板要的"子站统一到工作台主色", 真正对齐点应该由 GM 定 ——
-   ① 把工作台 L101/L103 那块改成海军蓝 (推荐, 规格 §0 就是这么假设的), 或
-   ② 把本文件这两块换成灰蓝。改哪边都只动一处, 子站会整体跟随。
-   内嵌 iframe 的场景已经与此无关: 见下面 .fv-embed, 它直接吃父页注入值。
+   ✅ 主色已统一 (GM 2026-09-07 裁决, 老板原话"海军蓝挺好的"):
+   两市 dashboard/index.html 里原本有**两套** :root —— 前一套是本文件这份海军蓝,
+   后一套 "终端风皮肤 (TV)" 又把同名令牌盖成 TradingView 灰蓝 (#131722/#1e222d)。
+   现已删除后者的令牌覆盖块 (TV 皮肤的强调色 #2962ff、字号、圆角、间距全部保留),
+   工作台线上渲染的就是本文件这套海军蓝, 子站与工作台从此同色。
+   改色只需改这里 + 工作台 :root 两处 (两处必须同名同值), 别再引入第三套。
+   内嵌 iframe 的场景与此无关: 见下面 .fv-embed, 它直接吃父页注入值。
 
-   ★ 颜色铁律 (老板 2026-09-07 拍板, 状态色 B 案) ★
+   ★ 颜色铁律 (老板 2026-09-07 拍板, 状态色 B 案; GM 09-07 复核补第 4 条) ★
    1. 数字方向 = 红涨绿跌: --up 红 / --down 绿, **裸色数字, 不加底色**。
    2. 状态 = 红绿表好坏: 入选/达标/通过 = 绿 --pass, 未过/停发 = 红 --fail,
       **一律做成实心药丸 (.fv-pill: 淡底 + 同色文字 + 细边)**。
       形状是唯一的消歧手段 —— 药丸=状态, 裸数字=涨跌。谁把状态写成裸色文字,
       或给涨跌数字加底色, 这条规则立刻失效, 别做。
    3. 琥珀 --warn 只表"提醒/反向证据", 蓝 --info 只表"研究中/激活/选中"。
+   4. **状态绿/红 ≠ 涨跌绿/红**: --pass/--fail 与 --down/--up 刻意取不同色值
+      (深色 pass #3ddc97 vs down #4ade80, fail #ff5c5c vs up #f87171),
+      形状之外再加一道色相差, 色弱用户与截图缩略图下也能分辨。
+      这两组值与工作台的 --ok/--bad 完全一致, 改一处必须四处同改。
    ========================================================================== */
 
 :root{
@@ -34,8 +36,9 @@
   /* —— 语义色 —— */
   --accent:#2962ff; --accent-ink:#7ab0ff;
   --up:#f87171;   --down:#4ade80;                                  /* 裸数字: 红涨绿跌 */
-  --pass:#4ade80; --pass-bg:rgba(74,222,128,.14);  --pass-line:rgba(74,222,128,.38);
-  --fail:#f87171; --fail-bg:rgba(248,113,113,.14); --fail-line:rgba(248,113,113,.38);
+  /* 状态色与涨跌色刻意不同值 (铁律 4): pass 是偏青的绿, fail 是偏橙的红 */
+  --pass:#3ddc97; --pass-bg:rgba(61,220,151,.14);  --pass-line:rgba(61,220,151,.38);
+  --fail:#ff5c5c; --fail-bg:rgba(255,92,92,.14);   --fail-line:rgba(255,92,92,.38);
   --warn:#f5b43c; --warn-bg:rgba(245,180,60,.14);  --warn-line:rgba(245,180,60,.38);
   --info:#7ab0ff; --info-bg:rgba(41,98,255,.22);   --info-line:rgba(41,98,255,.5);
   --shadow:0 6px 24px rgba(0,0,0,.35);
@@ -49,8 +52,8 @@
   --inputborder:#cbd5e1; --gridline:#e6ecf5; --drawer:#f6f8fc;
   --accent:#2962ff; --accent-ink:#0b57d0;
   --up:#ef4444;   --down:#16a34a;
-  --pass:#0c8a54; --pass-bg:rgba(22,163,74,.12);  --pass-line:rgba(22,163,74,.35);
-  --fail:#c22525; --fail-bg:rgba(239,68,68,.10);  --fail-line:rgba(239,68,68,.32);
+  --pass:#0c8a54; --pass-bg:rgba(12,138,84,.12);  --pass-line:rgba(12,138,84,.35);
+  --fail:#c22525; --fail-bg:rgba(194,37,37,.10);  --fail-line:rgba(194,37,37,.32);
   --warn:#9a6a00; --warn-bg:rgba(245,158,11,.14); --warn-line:rgba(245,158,11,.40);
   --info:#0b57d0; --info-bg:rgba(41,98,255,.10);  --info-line:rgba(41,98,255,.30);
   --shadow:0 6px 20px rgba(15,23,42,.12);
@@ -67,8 +70,8 @@
     --inputborder:#cbd5e1; --gridline:#e6ecf5; --drawer:#f6f8fc;
     --accent:#2962ff; --accent-ink:#0b57d0;
     --up:#ef4444;   --down:#16a34a;
-    --pass:#0c8a54; --pass-bg:rgba(22,163,74,.12);  --pass-line:rgba(22,163,74,.35);
-    --fail:#c22525; --fail-bg:rgba(239,68,68,.10);  --fail-line:rgba(239,68,68,.32);
+    --pass:#0c8a54; --pass-bg:rgba(12,138,84,.12);  --pass-line:rgba(12,138,84,.35);
+    --fail:#c22525; --fail-bg:rgba(194,37,37,.10);  --fail-line:rgba(194,37,37,.32);
     --warn:#9a6a00; --warn-bg:rgba(245,158,11,.14); --warn-line:rgba(245,158,11,.40);
     --info:#0b57d0; --info-bg:rgba(41,98,255,.10);  --info-line:rgba(41,98,255,.30);
     --shadow:0 6px 20px rgba(15,23,42,.12);

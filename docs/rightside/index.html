@@ -39,6 +39,9 @@
       font-variant-numeric:tabular-nums; white-space:nowrap; }
   .gates td{ white-space:normal; }        /* 准入关卡: 结果药丸较长, 手机上允许折行 */
   .gates .fv-pill{ white-space:normal; display:inline-block; }
+  /* 铁律: 药丸只装状态词, 收益数字裸放在药丸外面 (绿药丸里塞 +1.88% 会让"绿=通过"和"绿=跌"撞车) */
+  .gates .gate-n{ color:var(--dim); margin-left:6px; }
+  .gates .gate-n b{ font-weight:600; }
   tr:last-child td{ border-bottom:none; }
   .up{ color:var(--up); } .down{ color:var(--down); } .dim{ color:var(--dim); } .muted{ color:var(--muted); }
   .empty{ color:var(--muted); font-size:12.5px; padding:14px 4px; }
@@ -84,7 +87,7 @@
       <div class="rule" data-i18n-html="card_rule"></div>
       <table class="gates" style="margin-top:10px">
         <tr><th data-i18n="th_gate">准入关卡</th><th data-i18n="th_result">结果</th></tr>
-        <tr><td data-i18n="gate1">样本外扣费为正</td><td><span class="fv-pill pass" data-i18n="gate1_r">✓ DEV +1.88% / HOLD +1.02%（@2×成本）</span></td></tr>
+        <tr><td data-i18n="gate1">样本外扣费为正</td><td><span class="fv-pill pass" data-i18n="gate1_r">✓ 通过</span><span class="gate-n" data-i18n-html="gate1_n">DEV <b class="up">+1.88%</b> / HOLD <b class="up">+1.02%</b>（@2×成本）</span></td></tr>
         <tr><td data-i18n="gate2">双倍成本仍为正</td><td><span class="fv-pill pass" data-i18n="gate2_r">✓ 两期均正</span></td></tr>
         <tr><td data-i18n="gate3">参数 ±20% 稳健</td><td><span class="fv-pill pass" data-i18n="gate3_r">✓ 九变体两期全正</span></td></tr>
         <tr><td data-i18n="gate4">对抗验证</td><td><span class="fv-pill pass" data-i18n="gate4_r">✓ 无前视 · 独立复算一致</span></td></tr>
@@ -152,7 +155,8 @@ const T = {
   c_card:"策略卡 · hi52 × 行业顺风 × 固定60日",
   card_rule:"<b>入场</b>：收盘首次上穿前 250 日收盘高点（近 5 日为新鲜上穿）· 所属行业 60 日中位收益跑赢 SPY · 20 日均额 ≥ $5M · 次日开盘成交，高开 5% 不追<br><b>出场</b>：固定持有 60 交易日收盘出 · 止损 = 入场 −2.5×ATR20（夹 8%~20%，跳空按开盘）<br><b>成本</b>：0.2% 往返已计 · <b>预期基准</b>：每笔 +2.08%（双倍成本后），胜率 44.3%，持有约 41 日",
   th_gate:"准入关卡", th_result:"结果",
-  gate1:"样本外扣费为正", gate1_r:"✓ DEV +1.88% / HOLD +1.02%（@2×成本）",
+  gate1:"样本外扣费为正", gate1_r:"✓ 通过",
+  gate1_n:"DEV <b class='up'>+1.88%</b> / HOLD <b class='up'>+1.02%</b>（@2×成本）",
   gate2:"双倍成本仍为正", gate2_r:"✓ 两期均正",
   gate3:"参数 ±20% 稳健", gate3_r:"✓ 九变体两期全正",
   gate4:"对抗验证", gate4_r:"✓ 无前视 · 独立复算一致",
@@ -193,7 +197,8 @@ const T = {
   c_card:"Strategy card · hi52 × industry tailwind × fixed 60 days",
   card_rule:"<b>Entry</b>: first close above the prior 250-day closing high (fresh within 5 days) · the stock's industry beats SPY on 60-day median return · 20-day average turnover ≥ $5M · filled at next open, skipped if it gaps up more than 5%<br><b>Exit</b>: fixed 60-trading-day hold, exit on close · stop = entry − 2.5×ATR20 (clamped 8%-20%, gaps filled at the open)<br><b>Costs</b>: 0.2% round trip included · <b>Expected baseline</b>: +2.08% per trade (after double costs), 44.3% win rate, ~41 days held",
   th_gate:"Admission gate", th_result:"Result",
-  gate1:"Positive out-of-sample after costs", gate1_r:"✓ DEV +1.88% / HOLD +1.02% (@2× costs)",
+  gate1:"Positive out-of-sample after costs", gate1_r:"✓ Passed",
+  gate1_n:"DEV <b class='up'>+1.88%</b> / HOLD <b class='up'>+1.02%</b> (@2× costs)",
   gate2:"Still positive at double costs", gate2_r:"✓ Positive in both windows",
   gate3:"Robust to ±20% parameters", gate3_r:"✓ All nine variants positive in both windows",
   gate4:"Adversarial verification", gate4_r:"✓ No look-ahead · independent recompute agrees",
