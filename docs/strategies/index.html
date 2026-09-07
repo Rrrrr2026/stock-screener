@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>策略库 · FairValpha</title>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+<style>
+  :root{ --bg:#131722; --card:#1e222d; --card2:#262b38; --border:#2a2e39; --text:#d1d4dc; --dim:#b2b5be;
+         --muted:#787b86; --up:#ef5350; --down:#26a69a; --gold:#f5c96a; --blue:#5b9cf6; --violet:#a78bfa; }
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  body{ background:var(--bg); color:var(--text); font-family:-apple-system,"Segoe UI","Microsoft YaHei",sans-serif; padding:16px 18px 60px; }
+  a{ color:var(--blue); text-decoration:none; }
+  .wrap{ max-width:1320px; margin:0 auto; }
+  header{ display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:12px; }
+  h1{ font-size:19px; }
+  .tabs{ display:flex; gap:4px; flex-wrap:wrap; }
+  .tab{ padding:5px 12px; border:1px solid var(--border); border-radius:8px; cursor:pointer; font-size:13px; color:var(--dim); background:var(--card); }
+  .tab.on{ color:var(--gold); border-color:var(--gold); }
+  .mkt{ margin-left:auto; display:flex; gap:4px; }
+  .mkt button{ padding:5px 14px; font-size:13px; border:1px solid var(--border); background:var(--card); color:var(--dim); border-radius:8px; cursor:pointer; }
+  .mkt button.on{ color:var(--gold); border-color:var(--gold); }
+  #metabar{ display:flex; gap:14px; flex-wrap:wrap; font-size:12px; color:var(--dim); background:var(--card); border:1px solid var(--border); border-radius:10px; padding:8px 14px; margin-bottom:12px; }
+  #metabar b{ color:var(--text); }
+  .cols{ display:grid; grid-template-columns:340px 1fr; gap:12px; align-items:start; }
+  @media (max-width:980px){ .cols{ grid-template-columns:1fr; } }
+  .panel{ background:var(--card); border:1px solid var(--border); border-radius:10px; padding:12px; }
+  .panel h2{ font-size:13px; color:var(--gold); margin-bottom:8px; }
+  .scard{ border:1px solid var(--border); border-radius:8px; padding:9px 10px; margin-bottom:7px; cursor:pointer; }
+  .scard:hover{ border-color:var(--gold); }
+  .scard.on{ border-color:var(--gold); background:rgba(245,201,106,.05); }
+  .scard .n{ font-weight:600; font-size:13px; display:flex; gap:6px; align-items:center; flex-wrap:wrap; }
+  .scard .s{ font-size:11.5px; color:var(--muted); margin-top:4px; line-height:1.5; }
+  .badge{ padding:1px 7px; border-radius:99px; font-size:10.5px; border:1px solid var(--border); color:var(--dim); white-space:nowrap; }
+  .b-left{ color:#7dd3fc; border-color:#7dd3fc; } .b-right{ color:var(--up); border-color:var(--up); }
+  .b-swing{ color:var(--gold); border-color:var(--gold); } .b-cycle{ color:var(--violet); border-color:var(--violet); }
+  .st-prod{ color:var(--down); border-color:var(--down); } .st-shadow{ color:var(--gold); border-color:var(--gold); }
+  .st-lab{ color:var(--blue); border-color:var(--blue); } .st-fail{ color:var(--up); border-color:var(--up); } .st-park{ color:var(--muted); }
+  .ev-star{ color:var(--gold); } .ev-warn{ color:var(--up); } .ev-lab{ color:var(--blue); }
+  .tiles{ display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:8px; margin:8px 0 10px; }
+  .tile{ background:var(--card2); border:1px solid var(--border); border-radius:8px; padding:9px 11px; }
+  .tile .k{ font-size:11px; color:var(--muted); margin-bottom:4px; }
+  .tile .v{ font-size:18px; font-weight:700; font-variant-numeric:tabular-nums; }
+  .tile .s{ font-size:10.5px; color:var(--dim); margin-top:3px; }
+  .card{ background:var(--card); border:1px solid var(--border); border-radius:10px; padding:12px 14px; margin-bottom:10px; }
+  .card h3{ font-size:13px; color:var(--gold); margin-bottom:8px; font-weight:600; display:flex; align-items:center; gap:8px; }
+  .card h3 .badge{ font-weight:400; }
+  .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  @media (max-width:900px){ .grid2{ grid-template-columns:1fr; } }
+  table{ width:100%; border-collapse:collapse; font-size:12px; }
+  th{ text-align:right; color:var(--muted); font-weight:500; padding:4px 7px; border-bottom:1px solid var(--border); white-space:nowrap; }
+  td{ padding:4px 7px; border-bottom:1px solid rgba(42,46,57,.55); text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap; }
+  th:first-child, td:first-child{ text-align:left; }
+  tr:last-child td{ border-bottom:none; }
+  .up{ color:var(--up); } .down{ color:var(--down); } .dim{ color:var(--dim); } .muted{ color:var(--muted); }
+  .pass{ color:var(--gold); } .fail{ color:var(--up); } .na{ color:var(--muted); }
+  .rule{ font-size:12.5px; color:var(--dim); line-height:1.75; }
+  .rule b{ color:var(--text); }
+  .note{ font-size:11.5px; color:var(--muted); line-height:1.65; margin-top:8px; }
+  .scroll{ overflow-x:auto; }
+  .chart{ height:210px; }
+  details{ font-size:12px; color:var(--dim); margin-top:6px; }
+  summary{ cursor:pointer; color:var(--blue); }
+  pre{ font-size:11px; color:var(--dim); white-space:pre-wrap; background:var(--card2); border-radius:6px; padding:8px; margin-top:6px; }
+  .verdict{ font-size:13px; line-height:1.7; padding:10px 12px; border-left:3px solid var(--gold); background:rgba(245,201,106,.05); border-radius:6px; margin-bottom:10px; }
+  .empty{ color:var(--muted); font-size:12.5px; padding:12px 4px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>策略库</h1>
+    <div class="tabs" id="famTabs">
+      <div class="tab on" data-f="all">全部</div>
+      <div class="tab" data-f="left">左侧</div>
+      <div class="tab" data-f="swing">波段</div>
+      <div class="tab" data-f="right">右侧</div>
+      <div class="tab" data-f="cycle">周期</div>
+    </div>
+    <a href="/lab/" style="font-size:12px">→ 量化工作台</a>
+    <a href="/rightside/" style="font-size:12px">→ 右侧影子</a>
+    <div class="mkt"><button id="mA">A股</button><button id="mU" class="on">美股</button></div>
+  </header>
+  <div id="metabar">加载中…</div>
+  <div class="cols">
+    <div class="panel">
+      <h2>策略目录 <span class="muted" style="font-weight:400">（同一套家法回测口径）</span></h2>
+      <div id="list"></div>
+      <div class="note">状态：<span class="st-prod badge">生产</span> <span class="st-shadow badge">影子</span> <span class="st-lab badge">研究中</span> <span class="st-fail badge">未过准入</span> <span class="st-park badge">搁置</span><br>
+        证据：<span class="ev-star">★已证</span> · <span class="ev-warn">⚠️反向证据</span> · <span class="ev-lab">🔬研究中</span>。所有回测宇宙为现存股票（幸存者偏差，绝对值偏乐观）；荐股非投资建议。</div>
+    </div>
+    <div id="detail"></div>
+  </div>
+</div>
+
+<script>
+const $=s=>document.querySelector(s);
+const FAM={left:["左侧","b-left"],right:["右侧","b-right"],swing:["波段","b-swing"],cycle:["周期","b-cycle"]};
+const STC={prod:["生产","st-prod"],shadow:["影子","st-shadow"],lab:["研究中","st-lab"],fail:["未过准入","st-fail"],park:["搁置","st-park"]};
+const EVS={star:["★","ev-star"],warn:["⚠️","ev-warn"],lab:["🔬","ev-lab"]};
+let DATA=null, MKT="us", FAMF="all", CUR=null;
+const pct=(x,d=2)=>x==null||isNaN(x)?"—":(x>0?"+":"")+Number(x).toFixed(d)+"%";
+const cls=x=>x==null?"dim":(x>0?"up":(x<0?"down":"dim"));
+const badge=(t,c)=>`<span class="badge ${c||""}">${t}</span>`;
+const tile=(k,v,s,c)=>`<div class="tile"><div class="k">${k}</div><div class="v ${c||""}">${v}</div>${s?`<div class="s">${s}</div>`:""}</div>`;
+
+function statRow(name,s){
+  if(!s||!s.n) return `<tr><td>${name}</td><td class="muted" colspan="8">—</td></tr>`;
+  return `<tr><td>${name}</td><td>${s.n}</td><td class="${cls(s.avg)}">${pct(s.avg)}</td><td class="${cls(s.avg2x)}">${pct(s.avg2x)}</td><td class="${cls(s.med)}">${pct(s.med)}</td><td>${s.win}%</td><td>${s.pf??"—"}</td><td>${s.hold??"—"}</td><td>${s.t??"—"}</td></tr>`;
+}
+function statTable(obj,title,order){
+  const keys=order||Object.keys(obj||{});
+  if(!keys.length) return "";
+  return `<div class="scroll"><table><tr><th>${title}</th><th>n</th><th>均值@1x</th><th>均值@2x</th><th>中位</th><th>胜率</th><th>PF</th><th>持有bar</th><th>t</th></tr>${keys.map(k=>statRow(k,obj[k])).join("")}</table></div>`;
+}
+
+function renderList(){
+  const items=DATA.strategies.filter(s=>FAMF==="all"||s.family.includes(FAMF));
+  $("#list").innerHTML=items.map(s=>{
+    const st=s.status[MKT]||"lab", ev=s.evidence[MKT];
+    return `<div class="scard ${CUR===s.id?"on":""}" data-id="${s.id}">
+      <div class="n">${s.name}${s.family.map(f=>badge(FAM[f][0],FAM[f][1])).join("")}${badge(STC[st][0],STC[st][1])}${ev?`<span class="${EVS[ev][1]}">${EVS[ev][0]}</span>`:""}</div>
+      <div class="s">${s.tagline[MKT]||s.tagline.all||""}</div></div>`;
+  }).join("")||'<div class="empty">该分类暂无策略</div>';
+  document.querySelectorAll(".scard").forEach(el=>el.onclick=()=>{CUR=el.dataset.id; renderList(); renderDetail();});
+}
+
+function gateTable(g){
+  if(!g||!g.length) return '<div class="empty">尚无准入评估</div>';
+  return `<table>${g.map(r=>`<tr><td>${r.name}</td><td class="${r.ok===true?"pass":(r.ok===false?"fail":"na")}">${r.ok===true?"✓":(r.ok===false?"✗":"—")} ${r.detail||""}</td></tr>`).join("")}</table>`;
+}
+
+function renderDetail(){
+  const s=DATA.strategies.find(x=>x.id===CUR)||DATA.strategies[0];
+  CUR=s.id;
+  const r=(s.results||{})[MKT];
+  let h=`<div class="card"><h3>${s.name} ${s.family.map(f=>badge(FAM[f][0],FAM[f][1])).join("")}${badge(STC[(s.status[MKT]||"lab")][0],STC[(s.status[MKT]||"lab")][1])}</h3>
+    <div class="rule">${s.source?`<b>出处</b>：<a href="${s.source.url}" target="_blank">${s.source.title}</a>${s.source.note?` <span class="muted">${s.source.note}</span>`:""}<br>`:""}
+    <b>思想</b>：${s.idea}<br>${(s.rules||[]).map(x=>`<b>${x[0]}</b>：${x[1]}`).join("<br>")}</div>
+    ${s.params?`<details><summary>全部参数（${Object.keys(s.params).length} 项，默认值）</summary><pre>${Object.entries(s.params).map(([k,v])=>k+" = "+v).join("\n")}</pre></details>`:""}
+    ${s.links?`<div class="note">${s.links.map(l=>`<a href="${l.url}">${l.title}</a>`).join(" · ")}</div>`:""}
+  </div>`;
+  if(s.verdict&&s.verdict[MKT]) h+=`<div class="verdict">${s.verdict[MKT]}</div>`;
+  if(!r){ h+=`<div class="card"><div class="empty">${s.noresult?.[MKT]||"该市场暂无本站回测结果"}</div></div>`; $("#detail").innerHTML=h; return; }
+  if(r.tables){
+    if(r.tiles) h+=`<div class="card"><h3>${r.tiles_title||"核心读数"} <span class="muted" style="font-weight:400;font-size:11.5px">${r.span||""} · ${r.universe||""}</span></h3><div class="tiles">${r.tiles.map(t=>tile(t.k,t.v,t.s,t.c)).join("")}</div>${r.note?`<div class="note">${r.note}</div>`:""}</div>`;
+    if(r.gate) h+=`<div class="card"><h3>准入计分板 <span class="muted" style="font-weight:400;font-size:11px">${r.gate_note||"家法三硬门 + 附加关卡"}</span></h3>${gateTable(r.gate)}</div>`;
+    h+=`<div class="grid2">`+r.tables.map(t=>`<div class="card"><h3>${t.title}</h3><div class="scroll"><table><tr>${t.head.map((x,i)=>`<th${i===0?' style="text-align:left"':''}>${x}</th>`).join("")}</tr>${t.rows.map(row=>`<tr>${row.map((x,i)=>{const num=typeof x==="number"; const txt=num?(t.pct&&t.pct.includes(i)?pct(x):x):(x??"—"); const c=num&&t.pct&&t.pct.includes(i)?cls(x):""; return `<td class="${c}"${i===0?' style="text-align:left"':''}>${txt}</td>`;}).join("")}</tr>`).join("")}</table></div>${t.note?`<div class="note">${t.note}</div>`:""}</div>`).join("")+`</div>`;
+    $("#detail").innerHTML=h; return;
+  }
+  const o=r.overall||{};
+  h+=`<div class="card"><h3>信号级重放 <span class="muted" style="font-weight:400;font-size:11.5px">${r.span} · ${r.universe}</span></h3>
+    <div class="tiles">
+      ${tile("完整回合",o.n??"—",`信号 ${r.signals_raw} → 流动 ${r.signals_liquid}`,"")}
+      ${tile("每笔均值 @1x",pct(o.avg),`@2x ${pct(o.avg2x)} · 成本 ${r.cost}%`,cls(o.avg))}
+      ${tile("中位数",pct(o.med),"典型一笔",cls(o.med))}
+      ${tile("胜率",o.win!=null?o.win+"%":"—",`PF ${o.pf??"—"} · t=${o.t??"—"}`,"")}
+      ${tile("平均持有",o.hold!=null?o.hold+" bar":"—",`R倍数 ${o.r_mult??"—"}`,"")}
+      ${tile("样本外 HOLD @2x",pct(r.by_period?.HOLD?.avg2x),`DEV @2x ${pct(r.by_period?.DEV?.avg2x)}`,cls(r.by_period?.HOLD?.avg2x))}
+    </div>
+    <div class="grid2"><div>${statTable(r.by_signal,"买点类型")}</div><div>${statTable(r.by_period,"期",["DEV","HOLD"])}</div></div>
+    <div class="note">无条件基线（流动 bar）：fwd20 ${r.baseline?.fwd20_avg}% / 胜率 ${r.baseline?.fwd20_win}%；信号日前瞻 fwd20 ${r.signal_fwd?.fwd20_avg}% / ${r.signal_fwd?.fwd20_win}%（评估用，不含出场规则）。回合=一个入场批次从买入到最后一股卖出（EE 减仓按股数加权合并），期末未平 ${r.lots_censored_END} 笔删失不计。</div>
+  </div>`;
+  h+=`<div class="grid2">
+    <div class="card"><h3>准入计分板 <span class="muted" style="font-weight:400;font-size:11px">家法三硬门 + 附加关卡</span></h3>${gateTable(r.gate)}</div>
+    <div class="card"><h3>按 regime / 行业顺风</h3>${statTable(r.by_regime,"regime(dualma k=5)",["bull","range","bear"])}<div style="height:6px"></div>${statTable(r.by_wind,"行业顺风")}
+      ${r.right_side_bull_wind?`<div style="height:6px"></div>${statTable({"右侧×牛市×顺风":r.right_side_bull_wind,...Object.fromEntries(Object.entries(r.right_side_bull_wind_by_period||{}).map(([k,v])=>["  └ "+k,v]))},"叠加家法过滤")}`:""}
+    </div>
+  </div>`;
+  h+=`<div class="grid2">
+    <div class="card"><h3>逐年（按信号日）</h3><div class="chart" id="yrChart"></div>${statTable(r.by_year,"年")}</div>
+    <div class="card"><h3>按最终出场原因</h3>${statTable(r.by_exit,"出场")}${r.variants?`<div style="height:8px"></div><div class="scroll"><table><tr><th>参数变体（一次一动）</th><th>n</th><th>全期@2x</th><th>DEV@2x</th><th>HOLD@2x</th><th>胜率</th></tr>${Object.entries(r.variants).map(([k,v])=>`<tr><td>${k}</td><td>${v.all?.n??0}</td><td class="${cls(v.all?.avg2x)}">${pct(v.all?.avg2x)}</td><td class="${cls(v.by_period?.DEV?.avg2x)}">${pct(v.by_period?.DEV?.avg2x)}</td><td class="${cls(v.by_period?.HOLD?.avg2x)}">${pct(v.by_period?.HOLD?.avg2x)}</td><td>${v.all?.win??"—"}%</td></tr>`).join("")}</table></div>`:""}</div>
+  </div>`;
+  if(r.portfolio){
+    const p1=r.portfolio["1x"], p2=r.portfolio["2x"];
+    h+=`<div class="card"><h3>组合级回测 <span class="muted" style="font-weight:400;font-size:11px">家法风控：单位风险 0.5% · 单股 ≤5% · ≤20 只 · 同日多信号按相对强度排队 · 次日开盘成交</span></h3>
+      <div class="tiles">
+        ${tile("CAGR @1x",pct(p1.cagr),`@2x ${pct(p2.cagr)} · 基准 ${pct(p1.bench_cagr)}`,cls(p1.cagr))}
+        ${tile("最大回撤",pct(p1.max_dd),`@2x ${pct(p2.max_dd)}`,"up")}
+        ${tile("Sharpe",p1.sharpe,`年化波动 ${p1.ann_vol}%`,"")}
+        ${tile("平均暴露",p1.avg_exposure+"%",`平均持仓 ${p1.avg_positions} 只`,"")}
+        ${tile("批次 / 胜率",`${p1.n_trades} / ${p1.win}%`,"批次级（含减仓）","")}
+      </div>
+      <div class="chart" id="pfChart"></div>
+      <div class="note">组合级结果受仓位规则与信号排队方式影响很大；此处仅为"按家法参数满负荷运行"的量级参考，不是准入依据。</div></div>`;
+  }
+  if(r.snapshot&&r.snapshot.rows&&r.snapshot.rows.length){
+    h+=`<div class="card"><h3>当前阶段快照 <span class="muted" style="font-weight:400;font-size:11px">${r.snapshot.date} · 流动股票池 ${r.snapshot.n_universe} 只 · 近 5 日有事件者优先</span></h3>
+      <div class="tiles">${Object.entries(r.snapshot.phase_counts||{}).map(([k,v])=>tile(k,v,"","")).join("")}</div>
+      <div class="scroll" style="max-height:420px;overflow-y:auto"><table><tr><th>代码</th><th>阶段</th><th>周期</th><th>阶段内天数</th><th>近5日事件</th><th>信号</th><th>收盘</th><th>距EMA20(ATR)</th><th>量比</th><th>跟踪止损</th></tr>
+      ${r.snapshot.rows.map(x=>`<tr><td><a href="${MKT==="a"?`https://quote.eastmoney.com/${x.ticker.startsWith("6")?"sh":"sz"}${x.ticker}.html`:`https://www.tradingview.com/chart/?symbol=${x.ticker}`}" target="_blank">${x.ticker}</a></td><td>${x.phase}</td><td class="${x.cycle==="UP"?"up":"down"}">${x.cycle}</td><td>${x.days_in_phase}</td><td class="dim">${x.recent_events||""}</td><td class="${x.recent_signals?.startsWith("BUY")?"up":(x.recent_signals?"down":"dim")}">${x.recent_signals||""}</td><td>${x.close}</td><td>${x.dist_ema20_atr}</td><td>${x.rvol}</td><td class="dim">${x.trail_stop??"—"}</td></tr>`).join("")}</table></div>
+      <div class="note">快照由状态机对全池逐日打标得到，仅展示"处于什么阶段"，不构成买卖建议；生产化需接每日导出任务。</div></div>`;
+  }
+  $("#detail").innerHTML=h;
+  if(typeof echarts!=="undefined"){
+    if(r.by_year&&$("#yrChart")){
+      const ys=Object.keys(r.by_year), v1=ys.map(y=>r.by_year[y].avg2x), ns=ys.map(y=>r.by_year[y].n);
+      echarts.init($("#yrChart")).setOption({grid:{left:44,right:44,top:18,bottom:24},tooltip:{trigger:"axis"},
+        xAxis:{type:"category",data:ys,axisLabel:{color:"#787b86",fontSize:10}},
+        yAxis:[{type:"value",axisLabel:{color:"#787b86",formatter:"{value}%"},splitLine:{lineStyle:{color:"#2a2e39"}}},{type:"value",axisLabel:{color:"#787b86"},splitLine:{show:false}}],
+        series:[{name:"每笔均值@2x",type:"bar",data:v1,itemStyle:{color:p=>p.value>=0?"#ef5350":"#26a69a"}},{name:"回合数",type:"line",yAxisIndex:1,data:ns,symbol:"none",lineStyle:{color:"#5b9cf6",width:1}}]});
+    }
+    if(r.portfolio&&$("#pfChart")){
+      const by=r.portfolio["1x"].by_year, ys=Object.keys(by);
+      echarts.init($("#pfChart")).setOption({grid:{left:44,right:12,top:26,bottom:24},tooltip:{trigger:"axis"},legend:{textStyle:{color:"#b2b5be"},top:0},
+        xAxis:{type:"category",data:ys,axisLabel:{color:"#787b86",fontSize:10}},
+        yAxis:{type:"value",axisLabel:{color:"#787b86",formatter:"{value}%"},splitLine:{lineStyle:{color:"#2a2e39"}}},
+        series:[{name:"策略@1x",type:"bar",data:ys.map(y=>by[y][0]),itemStyle:{color:"#f5c96a"}},{name:"基准",type:"bar",data:ys.map(y=>by[y][1]),itemStyle:{color:"#5b9cf6"}}]});
+    }
+  }
+}
+
+function setMkt(m){ MKT=m; $("#mA").classList.toggle("on",m==="a"); $("#mU").classList.toggle("on",m==="us"); renderList(); renderDetail(); }
+$("#mA").onclick=()=>setMkt("a"); $("#mU").onclick=()=>setMkt("us");
+document.querySelectorAll("#famTabs .tab").forEach(t=>t.onclick=()=>{ FAMF=t.dataset.f; document.querySelectorAll("#famTabs .tab").forEach(x=>x.classList.toggle("on",x===t)); renderList(); });
+
+fetch("./data.json",{cache:"no-store"}).then(r=>{ if(!r.ok) throw new Error("HTTP "+r.status); return r.json(); }).then(d=>{
+  DATA=d;
+  $("#metabar").innerHTML=`<span>生成 <b>${d.generated}</b></span><span>策略 <b>${d.strategies.length}</b> 条</span><span>口径：次日开盘成交 · 扣往返成本（美股 0.2% / A股 0.3%）· 完整回合 · DEV ≤2023 / HOLD 2024+ · regime dualma(k=5)</span>`;
+  CUR=d.strategies[0].id;
+  renderList(); renderDetail();
+}).catch(e=>{ $("#metabar").innerHTML=`<span class="up">data.json 加载失败：${e.message}</span>`; });
+</script>
+</body>
+</html>
