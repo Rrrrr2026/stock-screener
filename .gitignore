@@ -1,0 +1,31 @@
+# ---------------------------------------------------------------------------
+# stock-screener = fairvalpha.com 的站点根 (nginx root = 本仓 docs/)。
+# 本仓库只跟踪「页面与静态资源」; 一切由服务器流水线写进 docs/ 的**运行产物**都不入库。
+#
+# 为什么 (2026-09-08 运维卡 C3): 服务器上的发版动作是
+#   git fetch origin main && git reset --hard origin/main
+# 只要运行产物还被 git 跟踪, 每次发版都会把当天的数据打回仓库里的旧种子 —— 网站当场
+# 倒退到几天前, 而且要等下一次流水线才恢复 (A 站要等次日 14:00)。反过来, 产物一律 ignore,
+# reset --hard 就永远只动页面, 数据一个字节不碰, 发版随时可做。
+#
+# 谁写这些路径 (对照 stock-core/server/run-scripts.txt):
+#   docs/a/**                 run_a.sh        14:00  rsync -a a-share.../dashboard/  -> docs/a/
+#   docs/us/**                run_us.sh       08:30  rsync -a us-stock.../dashboard/ -> docs/us/
+#   docs/lab/factors_*.json   run_lab.sh      18:30  research/factor_export.py
+#   docs/rightside/data.json  run_r1shadow.sh 09:30  research/r1shadow.py
+#   docs/data/catalog.json    run_catalog.sh  19:30  research/data_catalog.py
+#   (/targets/ 不在本仓: nginx alias 到 /srv/stock/targets/, 由 run_targets.sh 00:15 写)
+#
+# 仍然跟踪 = 页面代码与 PC 发布的静态内容:
+#   docs/index.html · docs/shared/** · docs/lab/index.html · docs/rightside/index.html
+#   docs/data/index.html · docs/strategies/**
+#
+# 详见 stock-core/design/site_deploy.md (站点发版设计) 与 server/DEPLOY.md「站点发版」。
+# ---------------------------------------------------------------------------
+
+# 两市工作台: 整目录都是流水线从两个筛选器仓 dashboard/ 同步来的产物 ——
+# index.html 与 leftside_shared.js 也是 (它们的源在筛选器仓, 不在本仓, 本仓的副本只会更旧)。
+docs/a/
+docs/us/
+
+# 其余每日产物钉在各自目录的 .gitignore 里 (docs/lab/ · docs/rightside/ · docs/data/)。
