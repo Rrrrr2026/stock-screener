@@ -2,114 +2,135 @@
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>量化工作台 · FairValpha</title>
+<link rel="stylesheet" href="/shared/fv-shell.css?v=1">
 <style>
-  :root{ --bg:#131722; --card:#1e222d; --card2:#262b38; --border:#2a2e39; --text:#d1d4dc;
-         --dim:#b2b5be; --muted:#787b86; --up:#ef5350; --down:#26a69a; --gold:#f5c96a; --blue:#5b9cf6; }
+  /* 令牌全部来自 /shared/fv-shell.css (与两市工作台同名同值)。
+     颜色铁律 (状态色 B 案): 涨跌 = 裸色数字 (--up 红 / --down 绿);
+     状态/评价 = 实心药丸 .fv-pill (通过绿 / 未过红 / 研究中蓝)。 */
   *{ box-sizing:border-box; margin:0; padding:0; }
   body{ background:var(--bg); color:var(--text);
-        font-family:-apple-system,"Segoe UI","Microsoft YaHei",sans-serif; padding:16px 18px 60px; }
-  .wrap{ max-width:1280px; margin:0 auto; }
-  header{ display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:12px; }
+        font-family:-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",system-ui,sans-serif; }
+  .wrap{ max-width:1280px; margin:0 auto; padding:14px 18px calc(60px + var(--sab)); }
+  header{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:12px; }
   h1{ font-size:19px; }
+  html.fv-shell-on header h1{ display:none; }
   .tabs{ display:flex; gap:4px; }
-  .tab{ padding:5px 14px; border:1px solid var(--border); border-radius:8px; cursor:pointer;
-        font-size:13px; color:var(--dim); background:var(--card); }
-  .tab.on{ color:var(--gold); border-color:var(--gold); }
+  .tab{ padding:6px 14px; border:1px solid var(--inputborder); border-radius:8px; cursor:pointer;
+        font-size:13px; color:var(--dim); background:var(--input); }
+  .tab.on{ color:#fff; background:var(--accent); border-color:var(--accent); }
   .tab.dis{ opacity:.45; cursor:default; }
+  .xlinks{ display:flex; gap:10px; font-size:12px; }
   .mkt{ margin-left:auto; display:flex; gap:4px; }
-  .mkt button{ padding:5px 14px; font-size:13px; border:1px solid var(--border); background:var(--card);
+  html.fv-shell-on .mkt{ display:none; }   /* 市场分段已由共享外壳接管 (外壳没跑成时这排按钮兜底) */
+  .mkt button{ padding:5px 14px; font-size:13px; border:1px solid var(--inputborder); background:var(--input);
                color:var(--dim); border-radius:8px; cursor:pointer; }
-  .mkt button.on{ color:var(--gold); border-color:var(--gold); }
+  .mkt button.on{ color:#fff; background:var(--accent); border-color:var(--accent); }
   #metabar{ display:flex; gap:14px; flex-wrap:wrap; font-size:12px; color:var(--dim);
             background:var(--card); border:1px solid var(--border); border-radius:10px;
             padding:8px 14px; margin-bottom:12px; }
   #metabar b{ color:var(--text); }
-  .badge{ padding:1px 8px; border-radius:99px; font-size:11px; border:1px solid var(--border); }
-  .bull{ color:var(--up); border-color:var(--up); } .bear{ color:var(--down); border-color:var(--down); }
-  .rangeS{ color:var(--gold); border-color:var(--gold); }
   .cols{ display:grid; grid-template-columns:330px 1fr; gap:12px; }
-  @media (max-width:960px){ .cols{ grid-template-columns:1fr; } }
+  .cols > *{ min-width:0; }   /* 网格项默认 min-width:auto, 宽表会把整列撑爆 → 手机横向滚动 */
+  @media (max-width:960px){ .cols{ grid-template-columns:1fr; } .wrap{ padding:12px 10px calc(48px + var(--sab)); } }
   .panel{ background:var(--card); border:1px solid var(--border); border-radius:10px; padding:12px; }
-  .panel h2{ font-size:13px; color:var(--gold); margin-bottom:8px; }
-  .grp{ border:1px dashed var(--border); border-radius:8px; padding:8px; margin-bottom:8px; }
+  .panel h2{ margin-bottom:8px; }
+  .panel h2 .sub{ font-size:11.5px; font-weight:400; color:var(--muted); }
+  .grp{ border:1px dashed var(--inputborder); border-radius:8px; padding:8px; margin-bottom:8px; }
   .grp .ghead{ font-size:11px; color:var(--muted); margin-bottom:6px; display:flex; justify-content:space-between; }
   .cond{ display:flex; gap:4px; margin-bottom:5px; align-items:center; flex-wrap:wrap; }
-  select,input,button{ background:var(--card2); color:var(--text); border:1px solid var(--border);
-        border-radius:6px; padding:4px 6px; font-size:12px; font-family:inherit; }
+  select,input,button{ background:var(--input); color:var(--text); border:1px solid var(--inputborder);
+        border-radius:6px; padding:5px 6px; font-size:12px; font-family:inherit; }
   input{ width:64px; }
   input.wide{ width:100px; }
   button{ cursor:pointer; }
-  button:hover{ border-color:var(--gold); }
+  button:hover{ border-color:var(--accent); }
+  select:focus-visible,input:focus-visible,button:focus-visible{ outline:2px solid var(--accent); outline-offset:1px; }
   .x{ color:var(--muted); border:none; background:none; font-size:14px; padding:0 4px; }
-  .x:hover{ color:var(--up); }
-  .addrow{ font-size:12px; margin-top:4px; display:flex; gap:6px; }
+  .x:hover{ color:var(--fail); }
+  .addrow{ font-size:12px; margin-top:4px; display:flex; gap:6px; flex-wrap:wrap; }
+  #runBtn{ background:var(--accent); border-color:var(--accent); color:#fff; font-weight:600; }
   .preset{ border:1px solid var(--border); border-radius:8px; padding:8px 10px; margin-bottom:6px;
-           cursor:pointer; font-size:12.5px; }
-  .preset:hover{ border-color:var(--gold); }
+           cursor:pointer; font-size:12.5px; background:var(--input); }
+  .preset:hover{ border-color:var(--accent); }
   .preset .pn{ color:var(--text); font-weight:600; }
   .preset .pe{ color:var(--muted); font-size:11.5px; margin-top:3px; line-height:1.5; }
-  .ev-star{ color:var(--gold); } .ev-warn{ color:var(--up); } .ev-lab{ color:var(--blue); }
+  .ev{ font-size:10.5px; padding:0 6px; }        /* 证据药丸 (表格/条件行内的紧凑版) */
   #resmeta{ display:flex; gap:12px; align-items:center; flex-wrap:wrap; font-size:12.5px;
             color:var(--dim); margin-bottom:8px; }
-  #resmeta b{ color:var(--gold); font-size:15px; }
+  #resmeta b{ color:var(--accent-ink); font-size:15px; }
   .scroll{ overflow-x:auto; }
   table{ border-collapse:collapse; font-size:12px; width:100%; }
-  th{ text-align:right; color:var(--muted); font-weight:500; padding:4px 7px; cursor:pointer;
-      border-bottom:1px solid var(--border); white-space:nowrap; user-select:none; position:sticky; top:0; background:var(--card); }
+  th{ text-align:right; color:var(--dim); font-weight:500; padding:5px 7px; cursor:pointer;
+      border-bottom:1px solid var(--border); white-space:nowrap; user-select:none;
+      position:sticky; top:0; background:var(--head); z-index:2; }
+  th:hover{ color:var(--accent); }
   th:first-child,th:nth-child(2),th:nth-child(3){ text-align:left; }
-  td{ padding:4px 7px; border-bottom:1px solid rgba(42,46,57,.5); white-space:nowrap;
+  td{ padding:5px 7px; border-bottom:1px solid var(--gridline); white-space:nowrap;
       text-align:right; font-variant-numeric:tabular-nums; }
   td:first-child,td:nth-child(2),td:nth-child(3){ text-align:left; }
-  tr:hover td{ background:rgba(91,156,246,.06); }
+  tr:hover td{ background:var(--rowhover); }
   .up{ color:var(--up); } .down{ color:var(--down); } .muted{ color:var(--muted); }
-  a{ color:var(--blue); text-decoration:none; }
-  .note{ font-size:11px; color:var(--muted); margin-top:8px; line-height:1.6; }
+  a{ color:var(--accent-ink); text-decoration:none; }
+  a:hover{ text-decoration:underline; }
+  .note{ font-size:11px; color:var(--muted); margin-top:8px; line-height:1.7; }
+  /* 页级告警: 通栏琥珀底 + ⚠️, 永不进表格单元格 (规格 §8 约束) */
+  .alert{ display:block; padding:6px 10px; border-radius:8px; font-size:12px; line-height:1.6;
+          background:var(--warn-bg); color:var(--warn); border:1px solid var(--warn-line); }
   .savebar{ display:flex; gap:6px; margin-top:8px; flex-wrap:wrap; }
-  .placeholder{ padding:60px 20px; text-align:center; color:var(--muted); font-size:14px; }
+  @media (max-width:640px){
+    .wrap{ padding-left:8px; padding-right:8px; }
+    header{ gap:8px; }
+    input,select{ font-size:16px; }         /* 防 iOS 聚焦缩放 */
+    .cond select{ max-width:150px; }   /* 用 px 不用 vw: 部分内嵌/模拟环境里 vw 解析的不是可见视口 */
+    .addrow button,.savebar button{ min-height:34px; }
+    #resTbl{ font-size:11.5px; }
+  }
 </style>
 </head>
 <body>
+<script>window.FV_SHELL_CFG={page:"lab", from:"a", markets:true};</script>
+<script src="/shared/fv-shell.js?v=1"></script>
 <div class="wrap">
   <header>
-    <h1>量化工作台</h1>
+    <h1 data-i18n="page_title">量化工作台</h1>
     <div class="tabs">
-      <div class="tab on" id="tabScan">筛选器</div>
-      <div class="tab dis" title="W2 建设中">信号台</div>
-      <div class="tab dis" title="W3 建设中">策略实验室</div>
+      <div class="tab on" id="tabScan" data-i18n="tab_scan">筛选器</div>
+      <div class="tab dis" data-i18n="tab_sig" data-i18n-title="tab_sig_t" title="W2 建设中">信号台</div>
+      <div class="tab dis" data-i18n="tab_slab" data-i18n-title="tab_slab_t" title="W3 建设中">策略实验室</div>
     </div>
-    <a href="/rightside/" style="font-size:12px">→ 右侧影子监控</a>
-    <a href="/strategies/" style="font-size:12px">→ 策略库</a>
+    <div class="xlinks">
+      <a href="/rightside/" data-i18n="lk_rightside">→ 右侧工作台</a>
+      <a href="/strategies/" data-i18n="lk_strategies">→ 策略库</a>
+    </div>
     <div class="mkt">
-      <button id="mA" class="on">A股</button><button id="mU">美股</button>
+      <button id="mA" class="on" data-i18n="mkt_a">A股</button><button id="mU" data-i18n="mkt_us">美股</button>
     </div>
   </header>
 
-  <div id="metabar">加载中…</div>
+  <div id="metabar" data-i18n="loading">加载中…</div>
 
   <div class="cols">
     <div>
       <div class="panel" style="margin-bottom:12px">
-        <h2>筛选条件 <span class="muted" style="font-weight:400">（组内 AND，组间 OR）</span></h2>
+        <h2 class="fv-h"><span data-i18n="p_conds">筛选条件</span><span class="sub" data-i18n="p_conds_sub">（组内 AND，组间 OR）</span></h2>
         <div id="groups"></div>
         <div class="addrow">
-          <button id="addGrp">+ 或组</button>
-          <button id="runBtn" style="color:var(--gold);border-color:var(--gold)">▶ 运行筛选</button>
-          <button id="clearBtn">清空</button>
+          <button id="addGrp" data-i18n="btn_addgrp">+ 或组</button>
+          <button id="runBtn" data-i18n="btn_run">▶ 运行筛选</button>
+          <button id="clearBtn" data-i18n="btn_clear">清空</button>
         </div>
         <div class="savebar">
-          <input class="wide" id="saveName" placeholder="方案名">
-          <button id="saveBtn">保存</button>
-          <select id="loadSel" style="max-width:130px"><option value="">载入方案…</option></select>
-          <button id="delBtn">删</button>
+          <input class="wide" id="saveName" data-i18n-ph="ph_scheme" placeholder="方案名">
+          <button id="saveBtn" data-i18n="btn_save">保存</button>
+          <select id="loadSel" style="max-width:130px"></select>
+          <button id="delBtn" data-i18n="btn_del">删</button>
         </div>
-        <div class="note">证据标注：<span class="ev-star">★研究已证</span> ·
-          <span class="ev-warn">⚠️反向证据</span> · <span class="ev-lab">🔬研究中/未过准入</span><br>
-          出处：九年/十年回测 + 大涨解剖（stock-core/research）。荐股非投资建议。</div>
+        <div class="note" id="evLegend"></div>
       </div>
       <div class="panel">
-        <h2>预设模板（荐股 · 带战绩出处）</h2>
+        <h2 class="fv-h" data-i18n="p_presets">预设模板（荐股 · 带战绩出处）</h2>
         <div id="presets"></div>
       </div>
     </div>
@@ -122,135 +143,260 @@
 </div>
 
 <script>
+/* ================= 外壳 (缺失时退化为纯中文, 页面照常可用) ================= */
+const FV = window.fvShell || { lang:"zh", market:"a", applyI18n(){}, onLang(){}, onMarket(){}, onTheme(){} };
+
+/* ================= 页面 i18n ================= */
+const T = {
+ zh:{
+  page_title:"量化工作台", tab_scan:"筛选器", tab_sig:"信号台", tab_slab:"策略实验室",
+  tab_sig_t:"W2 建设中", tab_slab_t:"W3 建设中",
+  lk_rightside:"→ 右侧工作台", lk_strategies:"→ 策略库", mkt_a:"A股", mkt_us:"美股",
+  loading:"加载中…",
+  p_conds:"筛选条件", p_conds_sub:"（组内 AND，组间 OR）", p_presets:"预设模板（荐股 · 带战绩出处）",
+  btn_addgrp:"+ 或组", btn_run:"▶ 运行筛选", btn_clear:"清空", btn_save:"保存", btn_del:"删",
+  ph_scheme:"方案名", opt_load:"载入方案…",
+  grp_head:"条件组 {n}（AND）", btn_addcond:"＋条件", btn_delgrp:"✕组",
+  ev_star:"研究已证", ev_warn:"反向证据", ev_lab:"研究中／未过准入",
+  ev_legend:"证据标注：{star} · {warn} · {lab}<br>出处：九年/十年回测 + 大涨解剖（stock-core/research）。荐股非投资建议。",
+  meta_date:"数据日", meta_regime:"regime", meta_vol:"波动率态", meta_idx20:"指数 20日",
+  meta_dist:"距250日高点", meta_pool:"股票池", meta_unit:"只",
+  meta_factors:"因子 {n} 项 · 每交易日晚自动更新",
+  reg_bull:"牛市", reg_bear:"熊市", reg_range:"震荡",
+  res_hit:"命中", res_of:"只 · 显示前 {n} · 排序:", btn_csv:"导出CSV",
+  load_fail:"factors_{m}.json 加载失败: {e}（服务器任务尚未生成或路径错误）",
+  op_gt:">", op_lt:"<", op_ge:"≥", op_le:"≤", op_between:"区间", op_topP:"市场前%",
+  op_botP:"市场后%", op_vsF:"对字段×", op_is:"是", op_not:"否", op_eq:"=", op_ne:"≠",
+  mul_title:"倍数",
+  g_base:"基础", g_tech:"技术", g_mom:"动量", g_pos:"位置", g_ma:"均线", g_pat:"形态",
+  g_vol:"量能", g_vlt:"波动", g_rs:"相对强度", g_flag:"信号旗", g_val:"估值", g_evt:"事件",
+  mst_gold:"金叉", mst_dead:"死叉", mst_bull:"多", mst_bear:"空",
+  ev90_pos:"正面", ev90_neg:"负面", ev90_mixed:"混合", ev90_other:"其他", ev90_none:"无"
+ },
+ en:{
+  page_title:"Quant Lab", tab_scan:"Screener", tab_sig:"Signals", tab_slab:"Strategy Lab",
+  tab_sig_t:"W2 under construction", tab_slab_t:"W3 under construction",
+  lk_rightside:"→ Right-side Desk", lk_strategies:"→ Strategies", mkt_a:"CN", mkt_us:"US",
+  loading:"Loading…",
+  p_conds:"Filters", p_conds_sub:"(AND inside a group, OR between groups)",
+  p_presets:"Presets (with backtest provenance)",
+  btn_addgrp:"+ OR group", btn_run:"▶ Run screen", btn_clear:"Clear", btn_save:"Save", btn_del:"Delete",
+  ph_scheme:"Screen name", opt_load:"Load screen…",
+  grp_head:"Group {n} (AND)", btn_addcond:"＋ condition", btn_delgrp:"✕ group",
+  ev_star:"Proven", ev_warn:"Contrary evidence", ev_lab:"In research / not admitted",
+  ev_legend:"Evidence marks: {star} · {warn} · {lab}<br>Source: 9-10y backtests + big-winner autopsy (stock-core/research). Not investment advice.",
+  meta_date:"Data date", meta_regime:"Regime", meta_vol:"Vol state", meta_idx20:"Index 20D",
+  meta_dist:"Below 250D high", meta_pool:"Universe", meta_unit:"names",
+  meta_factors:"{n} factors · refreshed after every trading day",
+  reg_bull:"Bull", reg_bear:"Bear", reg_range:"Range",
+  res_hit:"Matched", res_of:"· showing top {n} · sorted by", btn_csv:"Export CSV",
+  load_fail:"factors_{m}.json failed to load: {e} (server job has not produced it, or wrong path)",
+  op_gt:">", op_lt:"<", op_ge:"≥", op_le:"≤", op_between:"range", op_topP:"top % of market",
+  op_botP:"bottom % of market", op_vsF:"vs field ×", op_is:"yes", op_not:"no", op_eq:"=", op_ne:"≠",
+  mul_title:"multiplier",
+  g_base:"Basics", g_tech:"Technical", g_mom:"Momentum", g_pos:"Position", g_ma:"Moving averages",
+  g_pat:"Pattern", g_vol:"Volume", g_vlt:"Volatility", g_rs:"Relative strength",
+  g_flag:"Signal flags", g_val:"Valuation", g_evt:"Events",
+  mst_gold:"Golden cross", mst_dead:"Death cross", mst_bull:"Bullish", mst_bear:"Bearish",
+  ev90_pos:"Positive", ev90_neg:"Negative", ev90_mixed:"Mixed", ev90_other:"Other", ev90_none:"None"
+ }
+};
+function t(k,vars){
+  let s = (T[FV.lang]||T.zh)[k]; if(s==null) s = T.zh[k]; if(s==null) return k;
+  if(vars) for(const v in vars) s = s.split("{"+v+"}").join(vars[v]);
+  return s;
+}
+const L = o => (FV.lang==="en" && o && o.e) ? o.e : (o ? o.z : "");
+
 /* ================= 字段注册表 ================= */
-const EV = (a,u)=>({a,u});   // 每市场证据 {grade,note}
-const S="star", W="warn", L="lab";
+/* ev: 每市场证据 {g:等级, z:中文说明, e:English note} */
+const S="star", W="warn", B="lab";
+const EV = (a,u)=>({a,u});
 const FIELDS_META = [
- {k:"code",l:"代码",g:"基础",t:"str"},
- {k:"name",l:"名称",g:"基础",t:"str"},
- {k:"industry",l:"行业/板块",g:"基础",t:"str"},
- {k:"close",l:"收盘价",g:"基础",t:"num"},
- {k:"chg1",l:"当日涨跌%",g:"基础",t:"num",pct:1},
- {k:"gap",l:"跳空%",g:"技术",t:"num",pct:1},
- {k:"ret5",l:"5日涨幅%",g:"动量",t:"num",pct:1},
- {k:"ret20",l:"20日涨幅%",g:"动量",t:"num",pct:1},
- {k:"ret60",l:"60日涨幅%",g:"动量",t:"num",pct:1},
- {k:"ret120",l:"120日涨幅%",g:"动量",t:"num",pct:1},
- {k:"ret40",l:"40日涨幅%（慢爬≤15）",g:"动量",t:"num",pct:1,ev:EV({g:S,n:"慢爬两市皆优(R0.5)"},{g:S,n:"慢爬两市皆优(R0.5)"})},
- {k:"rebound120",l:"距120日低点反弹%（A字位置）",g:"位置",t:"num",pct:1,ev:EV({g:L,n:"+25%确认→+50%兑现为A股可交易段(仅2024+为正)"},null)},
- {k:"dd250",l:"距250日高点%",g:"位置",t:"num",pct:1},
- {k:"dist_hi60",l:"距60日高点%",g:"位置",t:"num",pct:1},
- {k:"ma20_rel",l:"距MA20%",g:"均线",t:"num",pct:1},
- {k:"ma50_rel",l:"距MA50%",g:"均线",t:"num",pct:1},
- {k:"ma200_rel",l:"距MA200%",g:"均线",t:"num",pct:1},
- {k:"ma_stack",l:"均线多头排列",g:"均线",t:"bool"},
- {k:"trend_up",l:"趋势多头(价>MA50>MA200)",g:"均线",t:"bool"},
- {k:"box_amp30",l:"30日箱体振幅%",g:"形态",t:"num",ev:EV({g:W,n:"极紧箱体(≤10%)更差(M1④)"},{g:S,n:"缩量蓄势美股有效(M1⑤)"})},
- {k:"box_pos30",l:"箱体内位置(0-1)",g:"形态",t:"num"},
- {k:"vc",l:"缩量比(10日/前20日)",g:"量能",t:"num",ev:EV({g:L,n:"A股缩量反弹更持久"},{g:S,n:"vc≤0.55美股蓄势已证"})},
- {k:"volratio",l:"量比(今/5日)",g:"量能",t:"num",ev:EV({g:W,n:"A股放量=出货, fwd120最差桶(R0.5)"},{g:S,n:"美股放量=确认(R0.5)"})},
- {k:"volexp",l:"量能扩张(20日/120日)",g:"量能",t:"num",ev:EV({g:W,n:"A股放量反向"},{g:S,n:"美股正向"})},
- {k:"amt20",l:"20日均额",g:"量能",t:"num"},
- {k:"amt_pct",l:"成交额全市场分位",g:"量能",t:"num"},
- {k:"atr_pct",l:"ATR20%",g:"波动",t:"num"},
- {k:"vol_ann",l:"年化波动率%",g:"波动",t:"num"},
- {k:"boll_pos",l:"布林位置(-1~1)",g:"波动",t:"num"},
- {k:"rsi14",l:"RSI14",g:"技术",t:"num"},
- {k:"macd_dif",l:"MACD DIF",g:"技术",t:"num"},
- {k:"macd_hist",l:"MACD 柱",g:"技术",t:"num"},
- {k:"macd_state",l:"MACD 状态",g:"技术",t:"enum",opts:["金叉","死叉","多","空"]},
- {k:"rps63",l:"RPS63 分位",g:"相对强度",t:"num",ev:EV({g:W,n:"A股高RPS摸高多拿不住"},{g:S,n:"美股动量单调有效"})},
- {k:"rps120",l:"RPS120 分位",g:"相对强度",t:"num",ev:EV({g:W,n:"同上"},{g:S,n:"同上"})},
- {k:"rps250",l:"RPS250 分位",g:"相对强度",t:"num"},
- {k:"ind_wind",l:"行业顺风(60日中位-指数)pp",g:"相对强度",t:"num",ev:EV({g:L,n:"A股温和顺风(0~20)最好, 过热反向"},{g:S,n:"美股单调有效, 准入策略成分"})},
- {k:"consec",l:"连阳(+)/连阴(-)",g:"技术",t:"num"},
- {k:"newhigh250",l:"250日新鲜上穿(5日内)",g:"信号旗",t:"bool",ev:EV({g:W,n:"A股追突破负期望(M1①)"},{g:S,n:"美股准入策略入场"})},
- {k:"reclaim",l:"趋势内回踩收复(R2口径)",g:"信号旗",t:"bool",ev:EV({g:L,n:"未过准入(R2 v2)"},null)},
- {k:"a25",l:"+25%确认(5日内)",g:"信号旗",t:"bool",ev:EV({g:L,n:"仅2024+为正(R2 v3), 反弹家族"},null)},
- {k:"pe",l:"PE-TTM",g:"估值",t:"num",ev:EV({g:W,n:"绝对低PE=价值陷阱(R0.5d)"},null)},
- {k:"pb",l:"PB",g:"估值",t:"num"},
- {k:"psr",l:"PS-TTM",g:"估值",t:"num"},
- {k:"mcap",l:"总市值(亿)",g:"估值",t:"num",ev:EV({g:S,n:"小盘效应bull态单调(R0.5d)"},null)},
- {k:"pe_pct",l:"PE自身历史分位",g:"估值",t:"num",ev:EV({g:S,n:"分位有效, 绝对值无效"},null)},
- {k:"ps_pct",l:"PS自身历史分位",g:"估值",t:"num",ev:EV({g:S,n:"队列已证: bull态Q1低分位fwd120 +8.7%(策略层未证)"},null)},
- {k:"ev90",l:"90日业绩预告",g:"事件",t:"enum",opts:["pos","neg","mixed","other","none"],ev:EV({g:S,n:"×牛市+4.1%vs+1.4%; 单独弱(R0.5c)"},null)},
+ {k:"code",z:"代码",e:"Code",g:"g_base",t:"str"},
+ {k:"name",z:"名称",e:"Name",g:"g_base",t:"str"},
+ {k:"industry",z:"行业/板块",e:"Industry / sector",g:"g_base",t:"str"},
+ {k:"close",z:"收盘价",e:"Close",g:"g_base",t:"num"},
+ {k:"chg1",z:"当日涨跌%",e:"Day %",g:"g_base",t:"num",pct:1},
+ {k:"gap",z:"跳空%",e:"Gap %",g:"g_tech",t:"num",pct:1},
+ {k:"ret5",z:"5日涨幅%",e:"5D return %",g:"g_mom",t:"num",pct:1},
+ {k:"ret20",z:"20日涨幅%",e:"20D return %",g:"g_mom",t:"num",pct:1},
+ {k:"ret60",z:"60日涨幅%",e:"60D return %",g:"g_mom",t:"num",pct:1},
+ {k:"ret120",z:"120日涨幅%",e:"120D return %",g:"g_mom",t:"num",pct:1},
+ {k:"ret40",z:"40日涨幅%（慢爬≤15）",e:"40D return % (slow climb ≤15)",g:"g_mom",t:"num",pct:1,
+   ev:EV({g:S,z:"慢爬两市皆优(R0.5)",e:"Slow climb best in both markets (R0.5)"},
+         {g:S,z:"慢爬两市皆优(R0.5)",e:"Slow climb best in both markets (R0.5)"})},
+ {k:"rebound120",z:"距120日低点反弹%（A字位置）",e:"Rebound off 120D low % (A-shape)",g:"g_pos",t:"num",pct:1,
+   ev:EV({g:B,z:"+25%确认→+50%兑现为A股可交易段(仅2024+为正)",
+            e:"+25% confirm → +50% payoff is the tradable leg in CN (positive only from 2024)"},null)},
+ {k:"dd250",z:"距250日高点%",e:"Below 250D high %",g:"g_pos",t:"num",pct:1},
+ {k:"dist_hi60",z:"距60日高点%",e:"Below 60D high %",g:"g_pos",t:"num",pct:1},
+ {k:"ma20_rel",z:"距MA20%",e:"vs MA20 %",g:"g_ma",t:"num",pct:1},
+ {k:"ma50_rel",z:"距MA50%",e:"vs MA50 %",g:"g_ma",t:"num",pct:1},
+ {k:"ma200_rel",z:"距MA200%",e:"vs MA200 %",g:"g_ma",t:"num",pct:1},
+ {k:"ma_stack",z:"均线多头排列",e:"MA stack bullish",g:"g_ma",t:"bool"},
+ {k:"trend_up",z:"趋势多头(价>MA50>MA200)",e:"Uptrend (px>MA50>MA200)",g:"g_ma",t:"bool"},
+ {k:"box_amp30",z:"30日箱体振幅%",e:"30D box range %",g:"g_pat",t:"num",
+   ev:EV({g:W,z:"极紧箱体(≤10%)更差(M1④)",e:"Very tight box (≤10%) is worse (M1④)"},
+         {g:S,z:"缩量蓄势美股有效(M1⑤)",e:"Low-volume coil works in the US (M1⑤)"})},
+ {k:"box_pos30",z:"箱体内位置(0-1)",e:"Position in box (0-1)",g:"g_pat",t:"num"},
+ {k:"vc",z:"缩量比(10日/前20日)",e:"Volume contraction (10D / prior 20D)",g:"g_vol",t:"num",
+   ev:EV({g:B,z:"A股缩量反弹更持久",e:"CN: low-volume rebounds last longer"},
+         {g:S,z:"vc≤0.55美股蓄势已证",e:"US: vc≤0.55 coil is proven"})},
+ {k:"volratio",z:"量比(今/5日)",e:"Volume ratio (today / 5D)",g:"g_vol",t:"num",
+   ev:EV({g:W,z:"A股放量=出货, fwd120最差桶(R0.5)",e:"CN: volume spike = distribution, worst fwd120 bucket (R0.5)"},
+         {g:S,z:"美股放量=确认(R0.5)",e:"US: volume spike = confirmation (R0.5)"})},
+ {k:"volexp",z:"量能扩张(20日/120日)",e:"Volume expansion (20D / 120D)",g:"g_vol",t:"num",
+   ev:EV({g:W,z:"A股放量反向",e:"CN: inverted"},{g:S,z:"美股正向",e:"US: same direction"})},
+ {k:"amt20",z:"20日均额",e:"20D avg turnover",g:"g_vol",t:"num"},
+ {k:"amt_pct",z:"成交额全市场分位",e:"Turnover market percentile",g:"g_vol",t:"num"},
+ {k:"atr_pct",z:"ATR20%",e:"ATR20 %",g:"g_vlt",t:"num"},
+ {k:"vol_ann",z:"年化波动率%",e:"Annualised volatility %",g:"g_vlt",t:"num"},
+ {k:"boll_pos",z:"布林位置(-1~1)",e:"Bollinger position (-1~1)",g:"g_vlt",t:"num"},
+ {k:"rsi14",z:"RSI14",e:"RSI14",g:"g_tech",t:"num"},
+ {k:"macd_dif",z:"MACD DIF",e:"MACD DIF",g:"g_tech",t:"num"},
+ {k:"macd_hist",z:"MACD 柱",e:"MACD histogram",g:"g_tech",t:"num"},
+ {k:"macd_state",z:"MACD 状态",e:"MACD state",g:"g_tech",t:"enum",
+   opts:[["金叉","mst_gold"],["死叉","mst_dead"],["多","mst_bull"],["空","mst_bear"]]},
+ {k:"rps63",z:"RPS63 分位",e:"RPS63 percentile",g:"g_rs",t:"num",
+   ev:EV({g:W,z:"A股高RPS摸高多拿不住",e:"CN: high RPS tops out, hard to hold"},
+         {g:S,z:"美股动量单调有效",e:"US: momentum is monotonically useful"})},
+ {k:"rps120",z:"RPS120 分位",e:"RPS120 percentile",g:"g_rs",t:"num",
+   ev:EV({g:W,z:"同上",e:"Same as above"},{g:S,z:"同上",e:"Same as above"})},
+ {k:"rps250",z:"RPS250 分位",e:"RPS250 percentile",g:"g_rs",t:"num"},
+ {k:"ind_wind",z:"行业顺风(60日中位-指数)pp",e:"Industry tailwind (60D median − index) pp",g:"g_rs",t:"num",
+   ev:EV({g:B,z:"A股温和顺风(0~20)最好, 过热反向",e:"CN: mild tailwind (0-20) is best, overheated inverts"},
+         {g:S,z:"美股单调有效, 准入策略成分",e:"US: monotonic, a component of the admitted strategy"})},
+ {k:"consec",z:"连阳(+)/连阴(-)",e:"Consecutive up(+) / down(−)",g:"g_tech",t:"num"},
+ {k:"newhigh250",z:"250日新鲜上穿(5日内)",e:"Fresh 250D breakout (≤5D)",g:"g_flag",t:"bool",
+   ev:EV({g:W,z:"A股追突破负期望(M1①)",e:"CN: chasing breakouts has negative expectancy (M1①)"},
+         {g:S,z:"美股准入策略入场",e:"US: entry of the admitted strategy"})},
+ {k:"reclaim",z:"趋势内回踩收复(R2口径)",e:"Pullback reclaim within trend (R2)",g:"g_flag",t:"bool",
+   ev:EV({g:B,z:"未过准入(R2 v2)",e:"Did not pass admission (R2 v2)"},null)},
+ {k:"a25",z:"+25%确认(5日内)",e:"+25% confirmation (≤5D)",g:"g_flag",t:"bool",
+   ev:EV({g:B,z:"仅2024+为正(R2 v3), 反弹家族",e:"Positive only from 2024 (R2 v3), rebound family"},null)},
+ {k:"pe",z:"PE-TTM",e:"PE-TTM",g:"g_val",t:"num",
+   ev:EV({g:W,z:"绝对低PE=价值陷阱(R0.5d)",e:"Absolute low PE = value trap (R0.5d)"},null)},
+ {k:"pb",z:"PB",e:"PB",g:"g_val",t:"num"},
+ {k:"psr",z:"PS-TTM",e:"PS-TTM",g:"g_val",t:"num"},
+ {k:"mcap",z:"总市值(亿)",e:"Market cap (100M)",g:"g_val",t:"num",
+   ev:EV({g:S,z:"小盘效应bull态单调(R0.5d)",e:"Small-cap effect is monotonic in bull regime (R0.5d)"},null)},
+ {k:"pe_pct",z:"PE自身历史分位",e:"PE own-history percentile",g:"g_val",t:"num",
+   ev:EV({g:S,z:"分位有效, 绝对值无效",e:"Percentile works, absolute level does not"},null)},
+ {k:"ps_pct",z:"PS自身历史分位",e:"PS own-history percentile",g:"g_val",t:"num",
+   ev:EV({g:S,z:"队列已证: bull态Q1低分位fwd120 +8.7%(策略层未证)",
+            e:"Cohort-proven: bull regime Q1 low percentile fwd120 +8.7% (not proven at strategy level)"},null)},
+ {k:"ev90",z:"90日业绩预告",e:"90D earnings preannouncement",g:"g_evt",t:"enum",
+   opts:[["pos","ev90_pos"],["neg","ev90_neg"],["mixed","ev90_mixed"],["other","ev90_other"],["none","ev90_none"]],
+   ev:EV({g:S,z:"×牛市+4.1%vs+1.4%; 单独弱(R0.5c)",e:"× bull regime +4.1% vs +1.4%; weak on its own (R0.5c)"},null)},
 ];
 const FM = Object.fromEntries(FIELDS_META.map(f=>[f.k,f]));
+const fl = k => L(FM[k]);                                   // 字段标签 (随语言)
 const DEFAULT_COLS = ["code","name","industry","close","chg1","ret20","ret120","dd250","rps120","ind_wind","vc","pe","ps_pct","mcap","ev90"];
 
 /* ================= 预设 ================= */
 const PRESETS = {
  a: [
-  {n:"温和顺风 · 慢爬多头", ev:"🔬 R2v2最佳过滤组合方向(样本外@2x≈0, 未过准入): bull态+慢爬+温和行业 曾avg+1.18%", tag:L,
+  {z:"温和顺风 · 慢爬多头", e:"Mild tailwind · slow-climb uptrend", tag:B,
+   evz:"🔬 R2v2最佳过滤组合方向(样本外@2x≈0, 未过准入): bull态+慢爬+温和行业 曾avg+1.18%",
+   eve:"🔬 Best R2v2 filter direction (out-of-sample @2× ≈ 0, not admitted): bull + slow climb + mild industry averaged +1.18%",
    conds:[["trend_up","is",1],["ret120",">=",25],["ret40","<=",15],["ind_wind","between",0,20]]},
-  {n:"PS低分位 · 牛市配合", ev:"★ 队列已证: bull态 PS自身分位Q1 fwd120中位+8.7% (Q4为-2.3%); 注意策略层未单独成立", tag:S,
+  {z:"PS低分位 · 牛市配合", e:"Low PS percentile · bull regime", tag:S,
+   evz:"★ 队列已证: bull态 PS自身分位Q1 fwd120中位+8.7% (Q4为-2.3%); 注意策略层未单独成立",
+   eve:"★ Cohort-proven: in bull regime PS own-percentile Q1 has fwd120 median +8.7% (Q4 −2.3%); not established on its own at strategy level",
    conds:[["ps_pct","<=",25],["amt_pct",">=",30],["trend_up","is",1]]},
-  {n:"业绩预告 × 趋势", ev:"★ 正面预告×牛市 fwd120 +4.1% vs 无预告+1.4% (R0.5c); 单独使用无效", tag:S,
+  {z:"业绩预告 × 趋势", e:"Preannouncement × trend", tag:S,
+   evz:"★ 正面预告×牛市 fwd120 +4.1% vs 无预告+1.4% (R0.5c); 单独使用无效",
+   eve:"★ Positive preannouncement × bull regime: fwd120 +4.1% vs +1.4% without (R0.5c); useless alone",
    conds:[["ev90","eq","pos"],["trend_up","is",1]]},
-  {n:"深跌接近前低 (左侧风)", ev:"🪸 深回撤态两市fwd20皆最高(R0, 均值回归); 完整左侧逻辑见主工作台", tag:L,
+  {z:"深跌接近前低 (左侧风)", e:"Deep drawdown near prior low (left-side)", tag:B,
+   evz:"🪸 深回撤态两市fwd20皆最高(R0, 均值回归); 完整左侧逻辑见主工作台",
+   eve:"🪸 Deep-drawdown state has the highest fwd20 in both markets (R0, mean reversion); full left-side logic lives on the main desk",
    conds:[["dd250","<=",-40],["rebound120","<=",8],["amt_pct",">=",25]]},
-  {n:"蓄势缩量箱体 ⚠️", ev:"⚠️ A股追突破九年负期望(M1①), 生产端已停发此类买点 — 仅供观察, 勿追突破", tag:W,
+  {z:"蓄势缩量箱体 ⚠️", e:"Low-volume coil box ⚠️", tag:W,
+   evz:"⚠️ A股追突破九年负期望(M1①), 生产端已停发此类买点 — 仅供观察, 勿追突破",
+   eve:"⚠️ Chasing breakouts in CN has nine years of negative expectancy (M1①); production has stopped emitting this entry — observation only, do not chase",
    conds:[["box_amp30","<=",15],["vc","<=",0.75],["ret120",">=",10],["box_pos30",">=",0.3]]},
  ],
  us: [
-  {n:"★ 右侧准入策略 (影子在跑)", ev:"★ 唯一过三硬门: 250日新鲜上穿×行业顺风×持有60日, DEV@2x +1.88%/HOLD +1.02%, ±20%九变体全正", tag:S,
+  {z:"★ 右侧准入策略 (影子在跑)", e:"★ Admitted right-side strategy (shadow running)", tag:S,
+   evz:"★ 唯一过三硬门: 250日新鲜上穿×行业顺风×持有60日, DEV@2x +1.88%/HOLD +1.02%, ±20%九变体全正",
+   eve:"★ The only one through all three hard gates: fresh 250D breakout × industry tailwind × 60-day hold; DEV@2× +1.88% / HOLD +1.02%, all nine ±20% variants positive",
    conds:[["newhigh250","is",1],["ind_wind",">",0]]},
-  {n:"缩量蓄势突破候选", ev:"★ M1⑤: 缩量蓄势仅美股有效 (vc≤0.55: 21.8%→26.1%); R1 coil×顺风×E60 avg+1.73%(n325)", tag:S,
+  {z:"缩量蓄势突破候选", e:"Low-volume coil breakout candidates", tag:S,
+   evz:"★ M1⑤: 缩量蓄势仅美股有效 (vc≤0.55: 21.8%→26.1%); R1 coil×顺风×E60 avg+1.73%(n325)",
+   eve:"★ M1⑤: low-volume coil works only in the US (vc≤0.55: 21.8%→26.1%); R1 coil × tailwind × E60 avg +1.73% (n=325)",
    conds:[["box_amp30","<=",15],["vc","<=",0.55],["ret120",">=",10]]},
-  {n:"动量三重奏", ev:"★ 美股RPS单调有效+行业顺风单调+多头排列 (R0.5); 慢启动亦强", tag:S,
+  {z:"动量三重奏", e:"Momentum trio", tag:S,
+   evz:"★ 美股RPS单调有效+行业顺风单调+多头排列 (R0.5); 慢启动亦强",
+   eve:"★ US RPS is monotonic, industry tailwind is monotonic, MA stack bullish (R0.5); slow starters are strong too",
    conds:[["rps120",">=",85],["ind_wind",">",0],["ma_stack","is",1]]},
-  {n:"慢牛爬坡", ev:"★ 慢爬(40日≤15%)桶 fwd120 +6.55% 两市最优 (R0.5)", tag:S,
+  {z:"慢牛爬坡", e:"Slow-bull climb", tag:S,
+   evz:"★ 慢爬(40日≤15%)桶 fwd120 +6.55% 两市最优 (R0.5)",
+   eve:"★ Slow-climb bucket (40D ≤15%) has fwd120 +6.55%, best in both markets (R0.5)",
    conds:[["ret120",">=",25],["ret40","<=",15],["trend_up","is",1]]},
  ]
 };
 
 /* ================= 状态 ================= */
-let MKT="a", DATA=null, IDXOF={}, groups=[], sortKey="ret20", sortDesc=true, cols=[...DEFAULT_COLS];
+let MKT = (FV.market==="us") ? "us" : "a";
+let DATA=null, IDXOF={}, groups=[], sortKey="ret20", sortDesc=true, cols=[...DEFAULT_COLS];
 const $=s=>document.querySelector(s);
 
+/* 证据药丸: ★通过=绿 / ⚠️反向(已停发)=红 / 🔬研究中=蓝 —— 一律实心药丸, 与裸色涨跌数字区分 */
+const EV_CLS = {star:"pass", warn:"fail", lab:"info"};
+const EV_SYM = {star:"★", warn:"⚠️", lab:"🔬"};
+const EV_KEY = {star:"ev_star", warn:"ev_warn", lab:"ev_lab"};
+function evPill(grade, text, compact){
+  return `<span class="fv-pill ${EV_CLS[grade]}${compact?" ev":""}" title="${(text||"").replace(/"/g,"&quot;")}">${EV_SYM[grade]}${compact?"":" "+t(EV_KEY[grade])}</span>`;
+}
 function evBadge(f){
-  const e=f.ev && f.ev[MKT==="a"?"a":"u"];
+  const e = f.ev && f.ev[MKT==="a"?"a":"u"];
   if(!e) return "";
-  const sym=e.g===S?"★":(e.g===W?"⚠️":"🔬");
-  const c=e.g===S?"ev-star":(e.g===W?"ev-warn":"ev-lab");
-  return ` <span class="${c}" title="${e.n}">${sym}</span>`;
+  return " " + evPill(e.g, L(e), true);
+}
+function drawLegend(){
+  $("#evLegend").innerHTML = t("ev_legend", {
+    star: evPill(S, ""), warn: evPill(W, ""), lab: evPill(B, "")
+  });
 }
 function fieldOptions(sel){
-  const groupsMap={};
-  FIELDS_META.forEach(f=>{ if(f.t==="str")return; (groupsMap[f.g]=groupsMap[f.g]||[]).push(f); });
+  const gm={};
+  FIELDS_META.forEach(f=>{ if(f.t==="str")return; (gm[f.g]=gm[f.g]||[]).push(f); });
   let h="";
-  for(const g in groupsMap){
-    h+=`<optgroup label="${g}">`+groupsMap[g].map(f=>`<option value="${f.k}" ${f.k===sel?"selected":""}>${f.l}</option>`).join("")+`</optgroup>`;
+  for(const g in gm){
+    h+=`<optgroup label="${t(g)}">`+gm[g].map(f=>`<option value="${f.k}" ${f.k===sel?"selected":""}>${L(f)}</option>`).join("")+`</optgroup>`;
   }
   return h;
 }
 function opOptions(f,sel){
-  const t=FM[f].t;
+  const ty=FM[f].t;
   let ops;
-  if(t==="bool") ops=[["is","是"],["not","否"]];
-  else if(t==="enum") ops=[["eq","="],["ne","≠"]];
-  else ops=[[">",">"],["<","<"],[">=","≥"],["<=","≤"],["between","区间"],["topP","市场前%"],["botP","市场后%"],["vsF","对字段×"]];
-  return ops.map(([v,l])=>`<option value="${v}" ${v===sel?"selected":""}>${l}</option>`).join("");
+  if(ty==="bool") ops=[["is","op_is"],["not","op_not"]];
+  else if(ty==="enum") ops=[["eq","op_eq"],["ne","op_ne"]];
+  else ops=[[">","op_gt"],["<","op_lt"],[">=","op_ge"],["<=","op_le"],["between","op_between"],
+            ["topP","op_topP"],["botP","op_botP"],["vsF","op_vsF"]];
+  return ops.map(([v,k])=>`<option value="${v}" ${v===sel?"selected":""}>${t(k)}</option>`).join("");
 }
 function condHTML(gi,ci,c){
-  const f=FM[c[0]], op=c[1], t=f.t;
+  const f=FM[c[0]], op=c[1], ty=f.t;
   let inputs="";
-  if(t==="bool") inputs="";
-  else if(t==="enum") inputs=`<select data-r="v1">${(f.opts||[]).map(o=>`<option ${o===c[2]?"selected":""}>${o}</option>`).join("")}</select>`;
+  if(ty==="bool") inputs="";
+  else if(ty==="enum") inputs=`<select data-r="v1">${(f.opts||[]).map(([v,k])=>`<option value="${v}" ${v===c[2]?"selected":""}>${t(k)}</option>`).join("")}</select>`;
   else if(op==="between") inputs=`<input data-r="v1" value="${c[2]??""}"> ~ <input data-r="v2" value="${c[3]??""}">`;
-  else if(op==="vsF") inputs=`<select data-r="vf">${fieldOptions(c[2])}</select><input data-r="v2" value="${c[3]??1}" title="倍数">`;
+  else if(op==="vsF") inputs=`<select data-r="vf">${fieldOptions(c[2])}</select><input data-r="v2" value="${c[3]??1}" title="${t("mul_title")}">`;
   else inputs=`<input data-r="v1" value="${c[2]??""}">`;
   return `<div class="cond" data-g="${gi}" data-c="${ci}">
     <select data-r="f">${fieldOptions(c[0])}</select>
     <select data-r="op">${opOptions(c[0],op)}</select>${inputs}
     <span>${evBadge(f)}</span>
-    <button class="x" data-r="del">✕</button></div>`;
+    <button class="x" data-r="del" aria-label="✕">✕</button></div>`;
 }
 function render(){
   $("#groups").innerHTML = groups.map((g,gi)=>`<div class="grp">
-    <div class="ghead"><span>条件组 ${gi+1}（AND）</span>
-      <span><button class="x" data-r="addc" data-g="${gi}">＋条件</button>
-      ${groups.length>1?`<button class="x" data-r="delg" data-g="${gi}">✕组</button>`:""}</span></div>
+    <div class="ghead"><span>${t("grp_head",{n:gi+1})}</span>
+      <span><button class="x" data-r="addc" data-g="${gi}">${t("btn_addcond")}</button>
+      ${groups.length>1?`<button class="x" data-r="delg" data-g="${gi}">${t("btn_delgrp")}</button>`:""}</span></div>
     ${g.map((c,ci)=>condHTML(gi,ci,c)).join("")}</div>`).join("");
 }
 function readUI(){
@@ -314,6 +460,10 @@ function run(){
   lastRows=out;
   drawTable();
 }
+function enumLabel(k,v){
+  const o=(FM[k].opts||[]).find(p=>p[0]===v);
+  return o ? t(o[1]) : v;
+}
 function drawTable(){
   const si=colIdx(sortKey);
   const rows=[...lastRows].sort((a,b)=>{
@@ -322,21 +472,22 @@ function drawTable(){
     return sortDesc? (y>x?1:-1):(x>y?1:-1);
   });
   const topN=Math.min(rows.length, 500);
-  $("#resmeta").innerHTML=`命中 <b>${lastRows.length}</b> 只 · 显示前 ${topN} · 排序: ${FM[sortKey].l}${sortDesc?"↓":"↑"}
-    <button id="csvBtn">导出CSV</button>`;
+  $("#resmeta").innerHTML=`${t("res_hit")} <b>${lastRows.length}</b> ${t("res_of",{n:topN})} ${fl(sortKey)}${sortDesc?"↓":"↑"}
+    <button id="csvBtn">${t("btn_csv")}</button>`;
   $("#csvBtn").onclick=exportCSV;
-  const head=cols.map(k=>`<th data-k="${k}">${FM[k].l}${k===sortKey?(sortDesc?" ↓":" ↑"):""}</th>`).join("");
+  const head=cols.map(k=>`<th data-k="${k}">${fl(k)}${k===sortKey?(sortDesc?" ↓":" ↑"):""}</th>`).join("");
   const body=rows.slice(0,topN).map(r=>{
     return "<tr>"+cols.map(k=>{
       let v=r[colIdx(k)];
       if(v==null) return '<td class="muted">—</td>';
       if(k==="code"){
         const url=MKT==="a"?`https://quote.eastmoney.com/${v.startsWith("6")?"sh":"sz"}${v}.html`:`https://www.tradingview.com/chart/?symbol=${v}`;
-        return `<td><a href="${url}" target="_blank">${v}</a></td>`;
+        return `<td><a href="${url}" target="_blank" rel="noopener">${v}</a></td>`;
       }
-      if(typeof v==="boolean") return `<td>${v?"✓":""}</td>`;
+      if(typeof v==="boolean") return `<td>${v?'<span class="fv-pill pass ev">✓</span>':""}</td>`;
+      if(FM[k].t==="enum") return `<td>${enumLabel(k,v)}</td>`;
       if(FM[k].pct||["chg1","gap"].includes(k)){
-        const c=v>0?"up":(v<0?"down":"");
+        const c=v>0?"up":(v<0?"down":"");     // 裸色数字 = 红涨绿跌
         return `<td class="${c}">${v}%</td>`;
       }
       return `<td>${v}</td>`;
@@ -350,7 +501,7 @@ function drawTable(){
   });
 }
 function exportCSV(){
-  const head=cols.map(k=>FM[k].l).join(",");
+  const head=cols.map(k=>fl(k)).join(",");
   const lines=lastRows.map(r=>cols.map(k=>{const v=r[colIdx(k)];return v==null?"":String(v).replace(/,/g,"，");}).join(","));
   const blob=new Blob(["﻿"+head+"\n"+lines.join("\n")],{type:"text/csv"});
   const a=document.createElement("a");
@@ -360,7 +511,7 @@ function exportCSV(){
 /* ================= 预设/保存 ================= */
 function drawPresets(){
   $("#presets").innerHTML=PRESETS[MKT].map((p,i)=>`<div class="preset" data-i="${i}">
-    <div class="pn">${p.n}</div><div class="pe">${p.ev}</div></div>`).join("");
+    <div class="pn">${L(p)}</div><div class="pe">${FV.lang==="en"?p.eve:p.evz}</div></div>`).join("");
   document.querySelectorAll(".preset").forEach(el=>el.onclick=()=>{
     groups=[PRESETS[MKT][+el.dataset.i].conds.map(c=>[...c])];
     render(); run();
@@ -369,7 +520,7 @@ function drawPresets(){
 const LSKEY="fv_lab_screens_v1";
 function loadSaved(){
   let s={}; try{s=JSON.parse(localStorage.getItem(LSKEY)||"{}")}catch(e){}
-  $("#loadSel").innerHTML='<option value="">载入方案…</option>'+Object.keys(s).map(n=>`<option>${n}</option>`).join("");
+  $("#loadSel").innerHTML=`<option value="">${t("opt_load")}</option>`+Object.keys(s).map(n=>`<option>${n}</option>`).join("");
   return s;
 }
 $("#saveBtn").onclick=()=>{
@@ -391,31 +542,56 @@ $("#delBtn").onclick=()=>{
 
 /* ================= 加载 ================= */
 function setMkt(m){
-  MKT=m;
-  $("#mA").classList.toggle("on",m==="a"); $("#mU").classList.toggle("on",m==="us");
+  MKT = (m==="us") ? "us" : "a";
+  $("#mA").classList.toggle("on",MKT==="a"); $("#mU").classList.toggle("on",MKT==="us");
   boot();
 }
 $("#mA").onclick=()=>setMkt("a"); $("#mU").onclick=()=>setMkt("us");
+FV.onMarket(setMkt);
+FV.onLang(()=>{
+  FV.applyI18n(T);
+  document.title = t("page_title")+" · FairValpha";
+  drawLegend(); render(); loadSaved();
+  if(DATA){ renderMeta(); drawPresets(); drawTable(); }
+});
+
+function renderMeta(){
+  const m=DATA.meta;
+  const regKey = m.regime==="bull" ? "reg_bull" : (m.regime==="bear" ? "reg_bear" : (m.regime==="range" ? "reg_range" : null));
+  const regTxt = regKey ? t(regKey) : m.regime;
+  /* regime 是方向, 不是好坏 → 用裸色数字那一套 (红涨绿跌 + 箭头), 绝不做成药丸,
+     否则红药丸会被读成"未过"、绿药丸被读成"通过"。 */
+  const reg = m.regime==="bull" ? `<b class="up">▲ ${regTxt}</b>`
+            : m.regime==="bear" ? `<b class="down">▼ ${regTxt}</b>`
+            : `<b class="muted">◆ ${regTxt}</b>`;
+  $("#metabar").innerHTML=`<span>${t("meta_date")} <b>${m.generated}</b></span>
+    <span>${t("meta_regime")} ${reg}</span>
+    <span>${t("meta_vol")} <b>${m.vol_state}</b></span>
+    <span>${t("meta_idx20")} <b class="${m.idx.ret20>0?"up":"down"}">${m.idx.ret20}%</b></span>
+    <span>${t("meta_dist")} <b>${m.idx.dist_hi250}%</b></span>
+    <span>${t("meta_pool")} <b>${m.n}</b> ${t("meta_unit")}</span>
+    <span class="muted">${t("meta_factors",{n:DATA.fields.length})}</span>`;
+}
 function boot(){
-  $("#metabar").textContent="加载中…";
+  $("#metabar").textContent=t("loading");
   fetch(`./factors_${MKT}.json`,{cache:"no-store"}).then(r=>{
     if(!r.ok) throw new Error("HTTP "+r.status);
     return r.json();
   }).then(d=>{
     DATA=d; IDXOF=Object.fromEntries(d.fields.map((k,i)=>[k,i]));
-    const m=d.meta;
-    const rb=m.regime==="bull"?'<span class="badge bull">牛市</span>':(m.regime==="bear"?'<span class="badge bear">熊市</span>':`<span class="badge rangeS">${m.regime==="range"?"震荡":m.regime}</span>`);
-    $("#metabar").innerHTML=`<span>数据日 <b>${m.generated}</b></span><span>regime ${rb}</span>
-      <span>波动率态 <b>${m.vol_state}</b></span><span>指数 20日 <b class="${m.idx.ret20>0?"up":"down"}">${m.idx.ret20}%</b></span>
-      <span>距250日高点 <b>${m.idx.dist_hi250}%</b></span><span>股票池 <b>${m.n}</b> 只</span>
-      <span class="muted">因子 ${d.fields.length} 项 · 每交易日晚自动更新</span>`;
+    renderMeta();
     if(!groups.length) groups=[[["trend_up","is",1,null]]];
     render(); drawPresets(); loadSaved(); run();
   }).catch(e=>{
-    $("#metabar").innerHTML=`<span class="up">factors_${MKT}.json 加载失败: ${e.message}（服务器任务尚未生成或路径错误）</span>`;
+    $("#metabar").innerHTML=`<span class="alert">⚠️ ${t("load_fail",{m:MKT,e:e.message})}</span>`;
     $("#resTbl").innerHTML=""; $("#resmeta").textContent="";
   });
 }
+FV.applyI18n(T);
+document.title = t("page_title")+" · FairValpha";
+drawLegend();
+loadSaved();
+$("#mA").classList.toggle("on",MKT==="a"); $("#mU").classList.toggle("on",MKT==="us");
 boot();
 </script>
 </body>

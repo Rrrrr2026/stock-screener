@@ -1,0 +1,125 @@
+/* ============================================================================
+   fv-shell.css · FairValpha 子站共享外壳 (/lab/ /rightside/ /targets/ /strategies/)
+   源文件: stock-core/dashboard/fv-shell.css
+   产物镜像: stock-screener/docs/shared/fv-shell.css  (与 leftside_shared.js 同规矩)
+   规格: stock-core/design/mobile_nav_spec.md §6
+   ----------------------------------------------------------------------------
+   令牌与两市工作台 dashboard/index.html 完全同名同值 (深海军蓝系), 子站从此与
+   工作台同皮肤; 白天模式由 body.light / html[data-theme="light"] 触发。
+
+   ★ 颜色铁律 (老板 2026-09-07 拍板, 状态色 B 案) ★
+   1. 数字方向 = 红涨绿跌: --up 红 / --down 绿, **裸色数字, 不加底色**。
+   2. 状态 = 红绿表好坏: 入选/达标/通过 = 绿 --pass, 未过/停发 = 红 --fail,
+      **一律做成实心药丸 (.fv-pill: 淡底 + 同色文字 + 细边)**。
+      形状是唯一的消歧手段 —— 药丸=状态, 裸数字=涨跌。谁把状态写成裸色文字,
+      或给涨跌数字加底色, 这条规则立刻失效, 别做。
+   3. 琥珀 --warn 只表"提醒/反向证据", 蓝 --info 只表"研究中/激活/选中"。
+   ========================================================================== */
+
+:root{
+  /* —— 工作台同款深色 (dashboard/index.html :root) —— */
+  --bg:#0b1220; --card:#111a2e; --border:#1e2a44; --text:#e5e7eb; --dim:#9fb4d6;
+  --muted:#7e93b8; --head:#0e1830; --rowhover:#16223c; --input:#0e1830;
+  --inputborder:#26344f; --gridline:#1b2640; --drawer:#0b1220;
+  /* —— 语义色 —— */
+  --accent:#2962ff; --accent-ink:#7ab0ff;
+  --up:#f87171;   --down:#4ade80;                                  /* 裸数字: 红涨绿跌 */
+  --pass:#4ade80; --pass-bg:rgba(74,222,128,.14);  --pass-line:rgba(74,222,128,.38);
+  --fail:#f87171; --fail-bg:rgba(248,113,113,.14); --fail-line:rgba(248,113,113,.38);
+  --warn:#f5b43c; --warn-bg:rgba(245,180,60,.14);  --warn-line:rgba(245,180,60,.38);
+  --info:#7ab0ff; --info-bg:rgba(41,98,255,.22);   --info-line:rgba(41,98,255,.5);
+  --shadow:0 6px 24px rgba(0,0,0,.35);
+  --sab:env(safe-area-inset-bottom,0px);
+  color-scheme:dark;
+}
+
+:root[data-theme="light"], body.light{
+  --bg:#eef2f8; --card:#ffffff; --border:#d7e0ee; --text:#0f172a; --dim:#334155;
+  --muted:#64748b; --head:#eaf0f8; --rowhover:#eaf1fb; --input:#ffffff;
+  --inputborder:#cbd5e1; --gridline:#e6ecf5; --drawer:#f6f8fc;
+  --accent:#2962ff; --accent-ink:#0b57d0;
+  --up:#ef4444;   --down:#16a34a;
+  --pass:#0c8a54; --pass-bg:rgba(22,163,74,.12);  --pass-line:rgba(22,163,74,.35);
+  --fail:#c22525; --fail-bg:rgba(239,68,68,.10);  --fail-line:rgba(239,68,68,.32);
+  --warn:#9a6a00; --warn-bg:rgba(245,158,11,.14); --warn-line:rgba(245,158,11,.40);
+  --info:#0b57d0; --info-bg:rgba(41,98,255,.10);  --info-line:rgba(41,98,255,.30);
+  --shadow:0 6px 20px rgba(15,23,42,.12);
+  color-scheme:light;
+}
+:root[data-theme="light"]{ background:#eef2f8; }
+
+/* 兜底: fv-shell.js 没跑成 (或跨域内嵌拿不到父页主题) 时跟随系统。
+   外壳正常工作时 html[data-theme] 必定有值, 这条永远不会与它打架。 */
+@media (prefers-color-scheme: light){
+  :root:not([data-theme="dark"]):not([data-theme="light"]){
+    --bg:#eef2f8; --card:#ffffff; --border:#d7e0ee; --text:#0f172a; --dim:#334155;
+    --muted:#64748b; --head:#eaf0f8; --rowhover:#eaf1fb; --input:#ffffff;
+    --inputborder:#cbd5e1; --gridline:#e6ecf5; --drawer:#f6f8fc;
+    --accent:#2962ff; --accent-ink:#0b57d0;
+    --up:#ef4444;   --down:#16a34a;
+    --pass:#0c8a54; --pass-bg:rgba(22,163,74,.12);  --pass-line:rgba(22,163,74,.35);
+    --fail:#c22525; --fail-bg:rgba(239,68,68,.10);  --fail-line:rgba(239,68,68,.32);
+    --warn:#9a6a00; --warn-bg:rgba(245,158,11,.14); --warn-line:rgba(245,158,11,.40);
+    --info:#0b57d0; --info-bg:rgba(41,98,255,.10);  --info-line:rgba(41,98,255,.30);
+    --shadow:0 6px 20px rgba(15,23,42,.12);
+    color-scheme:light;
+  }
+}
+
+/* ---------------------------------------------------------------- 外壳页头 */
+#fvShell{
+  position:sticky; top:0; z-index:60; height:48px; display:flex; align-items:center;
+  gap:2px; padding:0 4px; background:var(--card); border-bottom:1px solid var(--border);
+  font-family:-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+}
+#fvShell[hidden]{ display:none !important; }
+#fvShell .fv-ib{
+  flex:none; width:44px; height:44px; display:flex; align-items:center; justify-content:center;
+  background:none; border:0; border-radius:8px; color:var(--dim); cursor:pointer; padding:0;
+  font:600 12px/1 inherit; text-decoration:none;
+}
+#fvShell .fv-ib:hover{ background:var(--rowhover); color:var(--text); }
+#fvShell .fv-ib:active{ background:var(--rowhover); }
+#fvShell .fv-ib:focus-visible{ outline:2px solid var(--accent); outline-offset:-2px; }
+#fvShell .fv-ico{ width:20px; height:20px; fill:none; stroke:currentColor; stroke-width:1.6;
+  stroke-linecap:round; stroke-linejoin:round; }
+#fvShell .fv-crumb{
+  flex:1; min-width:0; padding:0 4px; font-size:14px; font-weight:600; color:var(--text);
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+#fvShell .fv-crumb small{ color:var(--muted); font-weight:400; }
+#fvShell .fv-seg{
+  flex:none; display:flex; height:32px; margin:0 4px; border:1px solid var(--inputborder);
+  border-radius:8px; overflow:hidden; background:var(--input);
+}
+#fvShell .fv-seg button{
+  min-width:38px; padding:0 8px; height:100%; border:0; background:none; color:var(--dim);
+  font:600 11.5px/1 inherit; font-family:inherit; cursor:pointer; white-space:nowrap;
+}
+#fvShell .fv-seg button.on{ background:var(--accent); color:#fff; }
+
+/* 页面主体给 sticky 页头留出锚点余量 */
+html{ scroll-padding-top:56px; }
+
+/* -------------------------------------------------------- 共享语义组件 */
+/* 板块小标题: 与工作台 .sec-title 同款 (3px 蓝条 + 正文色) */
+.fv-h{ font-size:14px; font-weight:600; color:var(--text); display:flex; align-items:center; gap:8px; }
+.fv-h::before{ content:""; width:3px; height:14px; border-radius:2px; background:var(--accent); flex:none; }
+
+/* 状态药丸: 淡底 + 同色文字 (B 案唯一合法的状态写法) */
+.fv-pill{
+  display:inline-block; padding:1px 9px; border-radius:100px; font-size:11.5px; font-weight:600;
+  line-height:1.6; white-space:nowrap; border:1px solid transparent;
+}
+.fv-pill.pass{ background:var(--pass-bg); color:var(--pass); border-color:var(--pass-line); }
+.fv-pill.fail{ background:var(--fail-bg); color:var(--fail); border-color:var(--fail-line); }
+.fv-pill.warn{ background:var(--warn-bg); color:var(--warn); border-color:var(--warn-line); }
+.fv-pill.info{ background:var(--info-bg); color:var(--info); border-color:var(--info-line); }
+.fv-pill.mute{ background:var(--input); color:var(--muted); border-color:var(--inputborder); }
+/* 方向数字: 裸色, 永不加底色 */
+.fv-up{ color:var(--up); } .fv-down{ color:var(--down); }
+
+@media (max-width:640px){
+  #fvShell .fv-crumb{ font-size:13px; }
+  #fvShell .fv-seg button{ min-width:34px; padding:0 6px; }
+}

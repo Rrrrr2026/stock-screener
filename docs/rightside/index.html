@@ -2,21 +2,24 @@
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>右侧交易工作台 · FairValpha</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>右侧工作台 · FairValpha</title>
+<link rel="stylesheet" href="/shared/fv-shell.css?v=1">
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
 <style>
-  :root{ --bg:#131722; --card:#1e222d; --border:#2a2e39; --text:#d1d4dc; --dim:#b2b5be;
-         --muted:#787b86; --up:#ef5350; --down:#26a69a; --gold:#f5c96a; --blue:#5b9cf6; }
+  /* 令牌来自 /shared/fv-shell.css (与两市工作台同名同值)。
+     颜色铁律 (状态色 B 案): 涨跌/收益 = 裸色数字 (--up 红 / --down 绿);
+     状态 = 实心药丸 .fv-pill (通过绿 / 未过·搁置红 / 进行中蓝)。 */
   *{ box-sizing:border-box; margin:0; padding:0; }
   body{ background:var(--bg); color:var(--text);
-        font-family:-apple-system,"Segoe UI","Microsoft YaHei",sans-serif; padding:18px 20px 60px; }
-  a{ color:var(--blue); text-decoration:none; }
-  .wrap{ max-width:1180px; margin:0 auto; }
-  header{ display:flex; align-items:baseline; gap:14px; flex-wrap:wrap; margin-bottom:16px; }
+        font-family:-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",system-ui,sans-serif; }
+  a{ color:var(--accent-ink); text-decoration:none; }
+  a:hover{ text-decoration:underline; }
+  .wrap{ max-width:1180px; margin:0 auto; padding:14px 20px calc(60px + var(--sab)); }
+  header{ display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:14px; }
   h1{ font-size:20px; font-weight:700; }
-  .badge{ font-size:12px; padding:2px 10px; border-radius:99px; border:1px solid var(--border);
-          color:var(--gold); background:rgba(245,201,106,.08); }
+  html.fv-shell-on header h1{ display:none; }
+  .xlinks{ display:flex; gap:10px; font-size:12px; }
   #asof{ color:var(--muted); font-size:12px; margin-left:auto; }
   .tiles{ display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px; margin-bottom:14px; }
   .tile{ background:var(--card); border:1px solid var(--border); border-radius:10px; padding:12px 14px; }
@@ -24,182 +27,297 @@
   .tile .v{ font-size:20px; font-weight:700; font-variant-numeric:tabular-nums; }
   .tile .s{ font-size:11px; color:var(--dim); margin-top:4px; }
   .grid{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
-  @media (max-width:900px){ .grid{ grid-template-columns:1fr; } }
+  .grid > *{ min-width:0; }   /* 同上: 防止宽表/长药丸把整列撑出视口 */
+  @media (max-width:960px){ .grid{ grid-template-columns:1fr; } .wrap{ padding:12px 10px calc(48px + var(--sab)); } }
   .card{ background:var(--card); border:1px solid var(--border); border-radius:10px;
          padding:14px 16px; margin-bottom:12px; }
-  .card h2{ font-size:14px; color:var(--gold); margin-bottom:10px; font-weight:600; }
+  .card h2{ margin-bottom:10px; }
   table{ width:100%; border-collapse:collapse; font-size:12.5px; }
-  th{ text-align:left; color:var(--muted); font-weight:500; padding:4px 8px;
-      border-bottom:1px solid var(--border); white-space:nowrap; }
-  td{ padding:5px 8px; border-bottom:1px solid rgba(42,46,57,.55);
+  th{ text-align:left; color:var(--dim); font-weight:500; padding:5px 8px;
+      background:var(--head); border-bottom:1px solid var(--border); white-space:nowrap; }
+  td{ padding:6px 8px; border-bottom:1px solid var(--gridline);
       font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .gates td{ white-space:normal; }        /* 准入关卡: 结果药丸较长, 手机上允许折行 */
+  .gates .fv-pill{ white-space:normal; display:inline-block; }
   tr:last-child td{ border-bottom:none; }
   .up{ color:var(--up); } .down{ color:var(--down); } .dim{ color:var(--dim); } .muted{ color:var(--muted); }
   .empty{ color:var(--muted); font-size:12.5px; padding:14px 4px; }
-  .ok{ color:var(--down); } /* 通过=绿? 按红涨绿跌习惯, 通过用金色勾更中性 */
-  .pass{ color:var(--gold); }
-  .rule{ font-size:12.5px; color:var(--dim); line-height:1.7; }
+  .rule{ font-size:12.5px; color:var(--dim); line-height:1.8; }
   .rule b{ color:var(--text); }
   .scroll{ overflow-x:auto; }
   #eqChart{ height:230px; }
   .note{ font-size:11.5px; color:var(--muted); line-height:1.7; margin-top:8px; }
-  .tl{ font-size:12.5px; line-height:1.9; color:var(--dim); }
+  .tl{ font-size:12.5px; line-height:2; color:var(--dim); }
   .tl b{ color:var(--text); }
   .split{ display:flex; gap:8px; flex-wrap:wrap; font-size:12px; }
-  .chip{ border:1px solid var(--border); border-radius:8px; padding:3px 9px; color:var(--dim); }
+  .chip{ border:1px solid var(--inputborder); background:var(--input); border-radius:8px; padding:3px 9px; color:var(--dim); }
+  /* 页级告警: 通栏琥珀底 + ⚠️, 永不进表格单元格 (规格 §8 约束) */
+  .alert{ display:block; padding:6px 10px; border-radius:8px; font-size:12px; line-height:1.6;
+          background:var(--warn-bg); color:var(--warn); border:1px solid var(--warn-line); }
+  @media (max-width:640px){
+    .wrap{ padding-left:8px; padding-right:8px; }
+    .tiles{ grid-template-columns:repeat(auto-fit,minmax(132px,1fr)); }
+    .tile .v{ font-size:18px; }
+    #eqChart{ height:190px; }
+  }
 </style>
 </head>
 <body>
+<script>window.FV_SHELL_CFG={page:"rightside", from:"us", markets:false};</script>
+<script src="/shared/fv-shell.js?v=1"></script>
 <div class="wrap">
   <header>
-    <h1>右侧交易 · 工作台</h1>
-    <span class="badge">美股线 · 影子运行期</span>
-    <a href="/lab/" style="font-size:12px;color:var(--blue);text-decoration:none">→ 量化工作台</a>
-    <a href="/strategies/" style="font-size:12px;color:var(--blue);text-decoration:none">→ 策略库</a>
-    <span id="asof" class="muted">加载中…</span>
+    <h1 data-i18n="page_title">右侧交易 · 工作台</h1>
+    <span class="fv-pill info" data-i18n="badge_line">美股线 · 影子运行期</span>
+    <div class="xlinks">
+      <a href="/lab/" data-i18n="lk_lab">→ 量化工作台</a>
+      <a href="/strategies/" data-i18n="lk_strategies">→ 策略库</a>
+    </div>
+    <span id="asof" class="muted" data-i18n="loading">加载中…</span>
   </header>
 
   <div class="tiles" id="tiles"></div>
 
   <div class="grid">
     <div class="card">
-      <h2>策略卡 · hi52 × 行业顺风 × 固定60日</h2>
-      <div class="rule">
-        <b>入场</b>：收盘首次上穿前 250 日收盘高点（近 5 日为新鲜上穿）· 所属行业 60 日中位收益跑赢 SPY · 20 日均额 ≥ $5M · 次日开盘成交，高开 5% 不追<br>
-        <b>出场</b>：固定持有 60 交易日收盘出 · 止损 = 入场 −2.5×ATR20（夹 8%~20%，跳空按开盘）<br>
-        <b>成本</b>：0.2% 往返已计 · <b>预期基准</b>：每笔 +2.08%（双倍成本后），胜率 44.3%，持有约 41 日
-      </div>
-      <table style="margin-top:10px">
-        <tr><th>准入关卡</th><th>结果</th></tr>
-        <tr><td>样本外扣费为正</td><td class="pass">✓ DEV +1.88% / HOLD +1.02%（@2×成本）</td></tr>
-        <tr><td>双倍成本仍为正</td><td class="pass">✓ 两期均正</td></tr>
-        <tr><td>参数 ±20% 稳健</td><td class="pass">✓ 九变体两期全正</td></tr>
-        <tr><td>对抗验证</td><td class="pass">✓ 无前视 · 独立复算一致</td></tr>
-        <tr><td>影子运行 3-6 个月</td><td class="dim">进行中（本页）</td></tr>
+      <h2 class="fv-h" data-i18n="c_card">策略卡 · hi52 × 行业顺风 × 固定60日</h2>
+      <div class="rule" data-i18n-html="card_rule"></div>
+      <table class="gates" style="margin-top:10px">
+        <tr><th data-i18n="th_gate">准入关卡</th><th data-i18n="th_result">结果</th></tr>
+        <tr><td data-i18n="gate1">样本外扣费为正</td><td><span class="fv-pill pass" data-i18n="gate1_r">✓ DEV +1.88% / HOLD +1.02%（@2×成本）</span></td></tr>
+        <tr><td data-i18n="gate2">双倍成本仍为正</td><td><span class="fv-pill pass" data-i18n="gate2_r">✓ 两期均正</span></td></tr>
+        <tr><td data-i18n="gate3">参数 ±20% 稳健</td><td><span class="fv-pill pass" data-i18n="gate3_r">✓ 九变体两期全正</span></td></tr>
+        <tr><td data-i18n="gate4">对抗验证</td><td><span class="fv-pill pass" data-i18n="gate4_r">✓ 无前视 · 独立复算一致</span></td></tr>
+        <tr><td data-i18n="gate5">影子运行 3-6 个月</td><td><span class="fv-pill info" data-i18n="gate5_r">进行中（本页）</span></td></tr>
       </table>
-      <div class="note">已知声明：回测宇宙为现存股票（幸存者偏差，绝对值偏乐观）；影子为信号级记录，不含资金分配。</div>
+      <div class="note" data-i18n="card_note">已知声明：回测宇宙为现存股票（幸存者偏差，绝对值偏乐观）；影子为信号级记录，不含资金分配。</div>
     </div>
 
     <div class="card">
-      <h2>一致性监控 · 影子 vs 回测</h2>
+      <h2 class="fv-h" data-i18n="c_consist">一致性监控 · 影子 vs 回测</h2>
       <div class="scroll"><table id="consistTbl"></table></div>
       <div id="eqChart"></div>
-      <div class="note">已了结样本 ≥5 笔起绘累计每笔净收益曲线；≥30 笔起一致性判读才有意义。</div>
+      <div class="note" data-i18n="consist_note">已了结样本 ≥5 笔起绘累计每笔净收益曲线；≥30 笔起一致性判读才有意义。</div>
     </div>
   </div>
 
   <div class="grid">
     <div class="card">
-      <h2>在持仓位</h2>
+      <h2 class="fv-h" data-i18n="c_open">在持仓位</h2>
       <div class="scroll"><table id="openTbl"></table></div>
     </div>
     <div class="card">
-      <h2>待入场（次日开盘）</h2>
+      <h2 class="fv-h" data-i18n="c_pend">待入场（次日开盘）</h2>
       <div class="scroll"><table id="pendTbl"></table></div>
     </div>
   </div>
 
   <div class="card">
-    <h2>最近了结（20 笔）</h2>
+    <h2 class="fv-h" data-i18n="c_closed">最近了结（20 笔）</h2>
     <div class="scroll"><table id="closedTbl"></table></div>
   </div>
 
   <div class="grid">
     <div class="card">
-      <h2>舱参数（M4 菜单推荐 · 待拍板）</h2>
-      <div class="rule">
-        推荐行：舱内单笔风险 <b>1.0%</b> × 舱内总风险 <b>6%</b> × 熔断 <b>rolling120</b>（回撤按最近 120 日峰值，自带恢复）<br>
-        → 舱级 CAGR 2.44% · 最大回撤 20.7% · 信号取用率 5.6%<br>
-        <span class="muted">要点：总风险预算放大反而伤（止损簇→回撤加深→减半拖累）；本舱按 20% 账户份额约贡献 +0.5%/年。</span>
-      </div>
+      <h2 class="fv-h" data-i18n="c_sizing">舱参数（M4 菜单推荐 · 待拍板）</h2>
+      <div class="rule" data-i18n-html="sizing_rule"></div>
     </div>
     <div class="card">
-      <h2>A股右侧 · 状态</h2>
-      <div class="rule">
-        <b>搁置（挂复活门）</b>：v1 窄门被执行现实化削平；v2 样本外归零；v3"吃A字左腿"仅 2024 年后为正（时代现象，预登记纪律不认）。<br>
-        复活门三条路：① 盈利事件深挖 ② M4 组合级仓位效应 ③ 退市数据补全。<br>
-        <span class="muted">衍生资产：regime 牛熊门（对照组恒差 1-2pp）已入路由器；A字反弹打法移交波段线。</span>
-      </div>
+      <h2 class="fv-h" data-i18n="c_ashare">A股右侧 · 状态</h2>
+      <div class="rule" data-i18n-html="ashare_rule"></div>
     </div>
   </div>
 
   <div class="card">
-    <h2>里程碑</h2>
-    <div class="tl">
-      <b>R0</b> 两市 regime 底座（三规则族+去抖，无前视，对抗验证过）→
-      <b>R0.5</b> 大涨解剖（7.2 万候选队列：两市分道的定量依据 · 修复价格库日期事故）→
-      <b>R1</b> 美股两臂×行业顺风×出场网格（hi52×顺风×E60 过三硬门）→
-      <b>R2 v1-v3</b> A股三次冲锋全部未过准入（诚实搁置）→
-      <b>M4</b> 组合级引擎+分舱参数菜单 →
-      <b>R1.5</b> 影子运行上服务器（每交易日 09:30 CEST 自动，失败微信告警）
-    </div>
+    <h2 class="fv-h" data-i18n="c_miles">里程碑</h2>
+    <div class="tl" data-i18n-html="miles"></div>
     <div class="split" style="margin-top:8px">
-      <span class="chip">研究档案：stock-core/research/out/</span>
-      <span class="chip">编年史：stock-core/CHRONICLE.md</span>
-      <span class="chip">数据：影子账本每交易日刷新</span>
+      <span class="chip" data-i18n="chip_res">研究档案：stock-core/research/out/</span>
+      <span class="chip" data-i18n="chip_chron">编年史：stock-core/CHRONICLE.md</span>
+      <span class="chip" data-i18n="chip_data">数据：影子账本每交易日刷新</span>
     </div>
   </div>
 </div>
 
 <script>
+/* ================= 外壳 (缺失时退化为纯中文, 页面照常可用) ================= */
+const FV = window.fvShell || { lang:"zh", market:"us", applyI18n(){}, onLang(){}, onMarket(){}, onTheme(){} };
+
+const T = {
+ zh:{
+  page_title:"右侧交易 · 工作台", badge_line:"美股线 · 影子运行期",
+  lk_lab:"→ 量化工作台", lk_strategies:"→ 策略库", loading:"加载中…",
+  asof:"账本日期 {d} · 每交易日 09:30 CEST 自动更新",
+  load_fail:"数据加载失败：{e}",
+  c_card:"策略卡 · hi52 × 行业顺风 × 固定60日",
+  card_rule:"<b>入场</b>：收盘首次上穿前 250 日收盘高点（近 5 日为新鲜上穿）· 所属行业 60 日中位收益跑赢 SPY · 20 日均额 ≥ $5M · 次日开盘成交，高开 5% 不追<br><b>出场</b>：固定持有 60 交易日收盘出 · 止损 = 入场 −2.5×ATR20（夹 8%~20%，跳空按开盘）<br><b>成本</b>：0.2% 往返已计 · <b>预期基准</b>：每笔 +2.08%（双倍成本后），胜率 44.3%，持有约 41 日",
+  th_gate:"准入关卡", th_result:"结果",
+  gate1:"样本外扣费为正", gate1_r:"✓ DEV +1.88% / HOLD +1.02%（@2×成本）",
+  gate2:"双倍成本仍为正", gate2_r:"✓ 两期均正",
+  gate3:"参数 ±20% 稳健", gate3_r:"✓ 九变体两期全正",
+  gate4:"对抗验证", gate4_r:"✓ 无前视 · 独立复算一致",
+  gate5:"影子运行 3-6 个月", gate5_r:"进行中（本页）",
+  card_note:"已知声明：回测宇宙为现存股票（幸存者偏差，绝对值偏乐观）；影子为信号级记录，不含资金分配。",
+  c_consist:"一致性监控 · 影子 vs 回测",
+  consist_note:"已了结样本 ≥5 笔起绘累计每笔净收益曲线；≥30 笔起一致性判读才有意义。",
+  c_open:"在持仓位", c_pend:"待入场（次日开盘）", c_closed:"最近了结（20 笔）",
+  c_sizing:"舱参数（M4 菜单推荐 · 待拍板）",
+  sizing_rule:"推荐行：舱内单笔风险 <b>1.0%</b> × 舱内总风险 <b>6%</b> × 熔断 <b>rolling120</b>（回撤按最近 120 日峰值，自带恢复）<br>→ 舱级 CAGR 2.44% · 最大回撤 20.7% · 信号取用率 5.6%<br><span class='muted'>要点：总风险预算放大反而伤（止损簇→回撤加深→减半拖累）；本舱按 20% 账户份额约贡献 +0.5%/年。</span>",
+  c_ashare:"A股右侧 · 状态",
+  ashare_rule:"<span class='fv-pill fail'>搁置（挂复活门）</span>：v1 窄门被执行现实化削平；v2 样本外归零；v3“吃A字左腿”仅 2024 年后为正（时代现象，预登记纪律不认）。<br>复活门三条路：① 盈利事件深挖 ② M4 组合级仓位效应 ③ 退市数据补全。<br><span class='muted'>衍生资产：regime 牛熊门（对照组恒差 1-2pp）已入路由器；A字反弹打法移交波段线。</span>",
+  c_miles:"里程碑",
+  miles:"<b>R0</b> 两市 regime 底座（三规则族+去抖，无前视，对抗验证过）→ <b>R0.5</b> 大涨解剖（7.2 万候选队列：两市分道的定量依据 · 修复价格库日期事故）→ <b>R1</b> 美股两臂×行业顺风×出场网格（hi52×顺风×E60 过三硬门）→ <b>R2 v1-v3</b> A股三次冲锋全部未过准入（诚实搁置）→ <b>M4</b> 组合级引擎+分舱参数菜单 → <b>R1.5</b> 影子运行上服务器（每交易日 09:30 CEST 自动，失败微信告警）",
+  chip_res:"研究档案：stock-core/research/out/", chip_chron:"编年史：stock-core/CHRONICLE.md",
+  chip_data:"数据：影子账本每交易日刷新",
+  ti_closed:"影子已了结", ti_closed_s:"等第一笔走完",
+  ti_avg:"累计每笔均值", ti_avg_s:"基准 +{v}%",
+  ti_win:"胜率", ti_win_s:"基准 {v}%",
+  ti_open:"在持", ti_pend:"待入场", ti_pend_s:"次日开盘成交",
+  ti_aband:"弃单(跳空)", ti_aband_s:"高开>5%不追",
+  ti_state:"状态", ti_offline:"离线", ti_offline_s:"data.json 未生成或路径错误",
+  k_metric:"指标", k_shadow:"影子", k_bench:"回测基准",
+  m_avg:"每笔净收益均值", m_win:"胜率", m_n:"样本数",
+  n_hint_lt:"（≥30 笔起判读）", n_hint_ok:"可判读",
+  eq_empty:"累计曲线待数据积累（已了结 ≥5 笔起绘制）",
+  th_code:"代码", th_sig:"信号日", th_entry:"入场日", th_entrypx:"入场价", th_stop:"止损",
+  th_sigclose:"信号收盘", th_exit:"出场日", th_exitpx:"出场价", th_net:"净收益", th_how:"方式",
+  how_stop:"止损", how_time:"到期",
+  e_open:"暂无在持 — 影子刚起步或近期无信号", e_pend:"暂无待入场",
+  e_closed:"暂无已了结交易 — 第一批持仓走完约需 60 个交易日"
+ },
+ en:{
+  page_title:"Right-side Desk", badge_line:"US line · shadow running",
+  lk_lab:"→ Quant Lab", lk_strategies:"→ Strategies", loading:"Loading…",
+  asof:"Ledger date {d} · refreshed 09:30 CEST every trading day",
+  load_fail:"Data failed to load: {e}",
+  c_card:"Strategy card · hi52 × industry tailwind × fixed 60 days",
+  card_rule:"<b>Entry</b>: first close above the prior 250-day closing high (fresh within 5 days) · the stock's industry beats SPY on 60-day median return · 20-day average turnover ≥ $5M · filled at next open, skipped if it gaps up more than 5%<br><b>Exit</b>: fixed 60-trading-day hold, exit on close · stop = entry − 2.5×ATR20 (clamped 8%-20%, gaps filled at the open)<br><b>Costs</b>: 0.2% round trip included · <b>Expected baseline</b>: +2.08% per trade (after double costs), 44.3% win rate, ~41 days held",
+  th_gate:"Admission gate", th_result:"Result",
+  gate1:"Positive out-of-sample after costs", gate1_r:"✓ DEV +1.88% / HOLD +1.02% (@2× costs)",
+  gate2:"Still positive at double costs", gate2_r:"✓ Positive in both windows",
+  gate3:"Robust to ±20% parameters", gate3_r:"✓ All nine variants positive in both windows",
+  gate4:"Adversarial verification", gate4_r:"✓ No look-ahead · independent recompute agrees",
+  gate5:"3-6 months of shadow running", gate5_r:"In progress (this page)",
+  card_note:"Known caveats: the backtest universe holds only surviving stocks (survivorship bias, absolute numbers are optimistic); the shadow is a signal-level record with no capital allocation.",
+  c_consist:"Consistency monitor · shadow vs backtest",
+  consist_note:"The cumulative per-trade net return curve starts at ≥5 closed trades; consistency is only meaningful from ≥30.",
+  c_open:"Open positions", c_pend:"Pending entries (next open)", c_closed:"Recently closed (20)",
+  c_sizing:"Sleeve parameters (M4 menu recommendation · pending sign-off)",
+  sizing_rule:"Recommended row: per-trade risk <b>1.0%</b> × total sleeve risk <b>6%</b> × circuit breaker <b>rolling120</b> (drawdown measured off the last 120-day peak, self-recovering)<br>→ sleeve CAGR 2.44% · max drawdown 20.7% · signal take-up 5.6%<br><span class='muted'>Key point: enlarging the total risk budget hurts (stop clusters → deeper drawdown → halving drags). At a 20% account share this sleeve contributes about +0.5%/yr.</span>",
+  c_ashare:"A-share right side · status",
+  ashare_rule:"<span class='fv-pill fail'>Shelved (revival gate attached)</span>: v1's narrow gate was flattened once execution reality was applied; v2 went to zero out of sample; v3 (\"eat the left leg of the A shape\") is positive only after 2024 — a period artefact the pre-registration discipline does not accept.<br>Three revival paths: ① dig into earnings events ② M4 portfolio-level sizing effects ③ backfill delisted names.<br><span class='muted'>Derived assets: the regime bull/bear gate (a steady 1-2pp spread vs control) is already in the router; the A-shape rebound play moved to the swing line.</span>",
+  c_miles:"Milestones",
+  miles:"<b>R0</b> regime base for both markets (three rule families + debounce, no look-ahead, adversarially verified) → <b>R0.5</b> big-winner autopsy (72k candidate cohort: the quantitative reason the two markets diverge · fixed the price-store date incident) → <b>R1</b> US two arms × industry tailwind × exit grid (hi52 × tailwind × E60 clears all three hard gates) → <b>R2 v1-v3</b> three A-share attempts, none admitted (honestly shelved) → <b>M4</b> portfolio-level engine + sleeve parameter menu → <b>R1.5</b> shadow running on the server (automatic 09:30 CEST every trading day, WeChat alert on failure)",
+  chip_res:"Research archive: stock-core/research/out/", chip_chron:"Chronicle: stock-core/CHRONICLE.md",
+  chip_data:"Data: shadow ledger refreshed every trading day",
+  ti_closed:"Shadow trades closed", ti_closed_s:"waiting for the first to finish",
+  ti_avg:"Cumulative per-trade mean", ti_avg_s:"baseline +{v}%",
+  ti_win:"Win rate", ti_win_s:"baseline {v}%",
+  ti_open:"Open", ti_pend:"Pending", ti_pend_s:"filled at next open",
+  ti_aband:"Skipped (gap)", ti_aband_s:"gap up >5%, not chased",
+  ti_state:"Status", ti_offline:"Offline", ti_offline_s:"data.json missing or wrong path",
+  k_metric:"Metric", k_shadow:"Shadow", k_bench:"Backtest baseline",
+  m_avg:"Mean net return per trade", m_win:"Win rate", m_n:"Sample size",
+  n_hint_lt:"(readable from ≥30)", n_hint_ok:"readable",
+  eq_empty:"Curve pending more data (drawn from ≥5 closed trades)",
+  th_code:"Symbol", th_sig:"Signal date", th_entry:"Entry date", th_entrypx:"Entry px", th_stop:"Stop",
+  th_sigclose:"Signal close", th_exit:"Exit date", th_exitpx:"Exit px", th_net:"Net return", th_how:"Exit type",
+  how_stop:"Stop", how_time:"Time exit",
+  e_open:"No open positions — the shadow just started or there were no recent signals", e_pend:"Nothing pending",
+  e_closed:"No closed trades yet — the first batch needs about 60 trading days"
+ }
+};
+function t(k,vars){
+  let s=(T[FV.lang]||T.zh)[k]; if(s==null) s=T.zh[k]; if(s==null) return k;
+  if(vars) for(const v in vars) s=s.split("{"+v+"}").join(vars[v]);
+  return s;
+}
+
 const $=s=>document.querySelector(s);
 const fmt=(x,d=2)=>x==null?"—":(x*100).toFixed(d)+"%";
-const cls=x=>x>0?"up":(x<0?"down":"dim");
+const cls=x=>x>0?"up":(x<0?"down":"dim");          /* 裸色数字: 红涨绿跌 */
 function tile(k,v,s,c){return `<div class="tile"><div class="k">${k}</div><div class="v ${c||""}">${v}</div>${s?`<div class="s">${s}</div>`:""}</div>`;}
 
-fetch("./data.json",{cache:"no-store"}).then(r=>{
-  if(!r.ok) throw new Error("HTTP "+r.status);
-  return r.json();
-}).then(d=>{
-  $("#asof").textContent = "账本日期 "+d.generated+" · 每交易日 09:30 CEST 自动更新";
+let D=null, chart=null;
+
+function draw(){
+  if(!D) return;
+  const d=D;
+  $("#asof").textContent = t("asof",{d:d.generated});
   const closed=d.closed||[], open=d.open||[], pend=d.pending||[];
   const rets=closed.map(c=>c.ret_net);
   const avg=rets.length?rets.reduce((a,b)=>a+b,0)/rets.length:null;
   const win=rets.length?rets.filter(x=>x>0).length/rets.length:null;
-  const holdAvg=closed.length?closed.reduce((a,c)=>a+(c.exit_date&&c.entry_date?1:0)*0,0):null;
 
   $("#tiles").innerHTML =
-    tile("影子已了结", closed.length, closed.length?null:"等第一笔走完", "") +
-    tile("累计每笔均值", rets.length?fmt(avg):"—", "基准 +"+d.benchmark.avg+"%", rets.length?cls(avg):"") +
-    tile("胜率", win!=null?(win*100).toFixed(1)+"%":"—", "基准 "+d.benchmark.win+"%", "") +
-    tile("在持", open.length, null, "") +
-    tile("待入场", pend.length, "次日开盘成交", "") +
-    tile("弃单(跳空)", d.abandoned||0, "高开>5%不追", "muted");
+    tile(t("ti_closed"), closed.length, closed.length?null:t("ti_closed_s"), "") +
+    tile(t("ti_avg"), rets.length?fmt(avg):"—", t("ti_avg_s",{v:d.benchmark.avg}), rets.length?cls(avg):"") +
+    tile(t("ti_win"), win!=null?(win*100).toFixed(1)+"%":"—", t("ti_win_s",{v:d.benchmark.win}), "") +
+    tile(t("ti_open"), open.length, null, "") +
+    tile(t("ti_pend"), pend.length, t("ti_pend_s"), "") +
+    tile(t("ti_aband"), d.abandoned||0, t("ti_aband_s"), "muted");
 
-  // 一致性表
   $("#consistTbl").innerHTML = `
-    <tr><th>指标</th><th>影子</th><th>回测基准</th></tr>
-    <tr><td>每笔净收益均值</td><td class="${rets.length?cls(avg):"dim"}">${rets.length?fmt(avg):"—"}</td><td class="dim">+${d.benchmark.avg}%</td></tr>
-    <tr><td>胜率</td><td>${win!=null?(win*100).toFixed(1)+"%":"—"}</td><td class="dim">${d.benchmark.win}%</td></tr>
-    <tr><td>样本数</td><td>${closed.length}</td><td class="dim">${closed.length<30?"（≥30 笔起判读）":"可判读"}</td></tr>`;
+    <tr><th>${t("k_metric")}</th><th>${t("k_shadow")}</th><th>${t("k_bench")}</th></tr>
+    <tr><td>${t("m_avg")}</td><td class="${rets.length?cls(avg):"dim"}">${rets.length?fmt(avg):"—"}</td><td class="dim">+${d.benchmark.avg}%</td></tr>
+    <tr><td>${t("m_win")}</td><td>${win!=null?(win*100).toFixed(1)+"%":"—"}</td><td class="dim">${d.benchmark.win}%</td></tr>
+    <tr><td>${t("m_n")}</td><td>${closed.length}</td><td class="dim">${closed.length<30?t("n_hint_lt"):t("n_hint_ok")}</td></tr>`;
 
-  // 净值曲线
-  if(closed.length>=5 && typeof echarts!=="undefined"){
-    const sorted=[...closed].sort((a,b)=>a.exit_date<b.exit_date?-1:1);
-    let cum=0; const xs=[],ys=[];
-    sorted.forEach(c=>{cum+=c.ret_net*100; xs.push(c.exit_date); ys.push(cum.toFixed(2));});
-    echarts.init($("#eqChart")).setOption({
-      grid:{left:44,right:12,top:16,bottom:24},
-      xAxis:{type:"category",data:xs,axisLabel:{color:"#787b86",fontSize:10}},
-      yAxis:{type:"value",axisLabel:{color:"#787b86",formatter:"{value}%"},splitLine:{lineStyle:{color:"#2a2e39"}}},
-      series:[{type:"line",data:ys,symbol:"none",lineStyle:{color:"#f5c96a",width:2},
-               areaStyle:{color:"rgba(245,201,106,.08)"}}],
-      tooltip:{trigger:"axis"}});
-  } else {
-    $("#eqChart").innerHTML='<div class="empty">累计曲线待数据积累（已了结 ≥5 笔起绘制）</div>';
-  }
+  drawChart(closed);
 
-  // 表格
-  const openRows=open.map(p=>`<tr><td>${p.code}</td><td class="dim">${p.sig_date}</td><td class="dim">${p.entry_date}</td><td>${p.entry_px}</td><td class="down">${p.stop_px}</td></tr>`).join("");
-  $("#openTbl").innerHTML = open.length?`<tr><th>代码</th><th>信号日</th><th>入场日</th><th>入场价</th><th>止损</th></tr>${openRows}`:'<tr><td class="empty">暂无在持 — 影子刚起步或近期无信号</td></tr>';
+  const openRows=open.map(p=>`<tr><td>${p.code}</td><td class="dim">${p.sig_date}</td><td class="dim">${p.entry_date}</td><td>${p.entry_px}</td><td>${p.stop_px}</td></tr>`).join("");
+  $("#openTbl").innerHTML = open.length
+    ? `<tr><th>${t("th_code")}</th><th>${t("th_sig")}</th><th>${t("th_entry")}</th><th>${t("th_entrypx")}</th><th>${t("th_stop")}</th></tr>${openRows}`
+    : `<tr><td class="empty">${t("e_open")}</td></tr>`;
   const pendRows=pend.map(p=>`<tr><td>${p.code}</td><td class="dim">${p.sig_date}</td><td>${p.sig_close}</td></tr>`).join("");
-  $("#pendTbl").innerHTML = pend.length?`<tr><th>代码</th><th>信号日</th><th>信号收盘</th></tr>${pendRows}`:'<tr><td class="empty">暂无待入场</td></tr>';
+  $("#pendTbl").innerHTML = pend.length
+    ? `<tr><th>${t("th_code")}</th><th>${t("th_sig")}</th><th>${t("th_sigclose")}</th></tr>${pendRows}`
+    : `<tr><td class="empty">${t("e_pend")}</td></tr>`;
   const cs=[...closed].sort((a,b)=>a.exit_date<b.exit_date?1:-1).slice(0,20);
-  const closedRows=cs.map(c=>`<tr><td>${c.code}</td><td class="dim">${c.entry_date}</td><td class="dim">${c.exit_date}</td><td>${c.entry_px}</td><td>${c.exit_px}</td><td class="${cls(c.ret_net)}">${fmt(c.ret_net)}</td><td class="dim">${c.status==="stop"?"止损":"到期"}</td></tr>`).join("");
-  $("#closedTbl").innerHTML = cs.length?`<tr><th>代码</th><th>入场日</th><th>出场日</th><th>入场价</th><th>出场价</th><th>净收益</th><th>方式</th></tr>${closedRows}`:'<tr><td class="empty">暂无已了结交易 — 第一批持仓走完约需 60 个交易日</td></tr>';
-}).catch(e=>{
-  $("#asof").textContent="数据加载失败："+e.message;
-  $("#tiles").innerHTML=tile("状态","离线","data.json 未生成或路径错误","down");
+  const closedRows=cs.map(c=>`<tr><td>${c.code}</td><td class="dim">${c.entry_date}</td><td class="dim">${c.exit_date}</td><td>${c.entry_px}</td><td>${c.exit_px}</td><td class="${cls(c.ret_net)}">${fmt(c.ret_net)}</td><td class="dim">${c.status==="stop"?t("how_stop"):t("how_time")}</td></tr>`).join("");
+  $("#closedTbl").innerHTML = cs.length
+    ? `<tr><th>${t("th_code")}</th><th>${t("th_entry")}</th><th>${t("th_exit")}</th><th>${t("th_entrypx")}</th><th>${t("th_exitpx")}</th><th>${t("th_net")}</th><th>${t("th_how")}</th></tr>${closedRows}`
+    : `<tr><td class="empty">${t("e_closed")}</td></tr>`;
+}
+
+function cssv(n){ return getComputedStyle(document.body).getPropertyValue(n).trim(); }
+function drawChart(closed){
+  const box=$("#eqChart");
+  if(!(closed.length>=5 && typeof echarts!=="undefined")){
+    if(chart){ chart.dispose(); chart=null; }
+    box.innerHTML=`<div class="empty">${t("eq_empty")}</div>`;
+    return;
+  }
+  box.innerHTML="";
+  const sorted=[...closed].sort((a,b)=>a.exit_date<b.exit_date?-1:1);
+  let cum=0; const xs=[],ys=[];
+  sorted.forEach(c=>{cum+=c.ret_net*100; xs.push(c.exit_date); ys.push(cum.toFixed(2));});
+  const accent=cssv("--accent")||"#2962ff", muted=cssv("--muted")||"#7e93b8", grid=cssv("--gridline")||"#1b2640";
+  if(chart) chart.dispose();
+  chart=echarts.init(box, document.documentElement.getAttribute("data-theme")==="light"?null:"dark",
+                     {renderer:"canvas"});
+  chart.setOption({
+    backgroundColor:"transparent",
+    grid:{left:44,right:12,top:16,bottom:24},
+    xAxis:{type:"category",data:xs,axisLabel:{color:muted,fontSize:10}},
+    yAxis:{type:"value",axisLabel:{color:muted,formatter:"{value}%"},splitLine:{lineStyle:{color:grid}}},
+    series:[{type:"line",data:ys,symbol:"none",lineStyle:{color:accent,width:2},
+             areaStyle:{color:"rgba(41,98,255,.12)"}}],
+    tooltip:{trigger:"axis"}});
+}
+
+FV.applyI18n(T);
+document.title = t("page_title")+" · FairValpha";
+FV.onLang(()=>{ FV.applyI18n(T); document.title=t("page_title")+" · FairValpha"; draw(); });
+FV.onTheme(()=>{ if(D) drawChart(D.closed||[]); });
+window.addEventListener("resize",()=>{ if(chart) chart.resize(); });
+
+fetch("./data.json",{cache:"no-store"}).then(r=>{
+  if(!r.ok) throw new Error("HTTP "+r.status);
+  return r.json();
+}).then(d=>{ D=d; draw(); }).catch(e=>{
+  $("#asof").textContent=t("load_fail",{e:e.message});
+  $("#tiles").innerHTML=`<div class="tile" style="grid-column:1/-1"><div class="alert">⚠️ ${t("ti_offline")} — ${t("ti_offline_s")}</div></div>`;
 });
 </script>
 </body>
