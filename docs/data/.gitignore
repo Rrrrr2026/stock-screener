@@ -1,0 +1,3 @@
+# 服务器每日 19:30 由 stock-catalog.timer 生成, 不入库
+# (git reset --hard 才不会拿旧目录覆盖当天盘点结果)
+catalog.json
