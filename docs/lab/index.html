@@ -418,6 +418,9 @@ $("#groups").addEventListener("click",e=>{
   if(r==="delg"){ readUI(); groups.splice(+e.target.dataset.g,1); render(); }
 });
 $("#addGrp").onclick=()=>{ readUI(); groups.push([["ret20",">",0,null]]); render(); };
+// 2026-09-14 修: 「运行筛选」按钮自 W1 起从未绑定点击 (只有加载/清空/载入方案会跑), 老板在手机上点了没反应才发现
+$("#runBtn").onclick=run;
+$("#groups").addEventListener("keydown",e=>{ if(e.key==="Enter"&&e.target.tagName==="INPUT"){ e.preventDefault(); run(); } });
 $("#clearBtn").onclick=()=>{ groups=[[["trend_up","is",1,null]]]; render(); run(); };
 
 /* ================= 筛选执行 ================= */
