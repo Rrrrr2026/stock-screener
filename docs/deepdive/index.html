@@ -275,6 +275,11 @@
   ol.src .mt{ color:var(--muted); margin-top:2px; }
   ol.src .nt{ color:var(--dim); margin-top:2px; }
   ol.src .fv-pill{ font-size:10.5px; padding:0 6px; margin-left:6px; }
+  /* 研究员自由文本里的长串 (FTC PDF 的 URL、us-gaap:…|fy|fp|end|form|filed 追溯串) 在散文块里可断 —— 09-27 v.4 档案的来源注
+     曾把 400 宽的页面撑到 669 (body overflow-x:hidden 只是裁掉, 手机 Chromium 仍按 669 宽缩放, 触屏点图随之失准);
+     表格不在此列, 宽表仍靠 .scroll 横滑 */
+  .lede p, .concl, .note, .slc, .md, details.fold .body, ul.judg, ol.wc .tx, ol.tl .ti, ol.tl .de, ol.src li, .metaline,
+  .co-meta, .verdict .big, footer.foot, .banner > div{ overflow-wrap:anywhere; }
 
   footer.foot{ border-top:1px solid var(--border); padding:18px 0 0; font-size:12px; color:var(--muted); line-height:1.8; max-width:62em; }
   footer.foot p{ margin-bottom:6px; }
