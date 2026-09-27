@@ -118,11 +118,18 @@
   .px .lab{ font-size:12px; color:var(--muted); }
   .px .v{ font-family:var(--serif); font-size:42px; font-weight:600; line-height:1.05; }
   .px .chg{ font-size:17px; font-weight:600; margin-left:10px; font-variant-numeric:tabular-nums; }
-  .px .row{ display:flex; gap:14px; justify-content:flex-end; flex-wrap:wrap; font-size:12.5px; margin-top:6px;
+  .px .row{ display:flex; gap:2px 14px; justify-content:flex-end; flex-wrap:wrap; font-size:12.5px; margin-top:6px;
     font-variant-numeric:tabular-nums; color:var(--muted); }
   .px .row b{ font-weight:600; }
+  /* 活的估值读数: 现价 (量化层每日) 对研究层合理区间 —— 首屏必须看得到, 研究员那句一行结论是研究时价写的 */
+  .px .fairln{ display:flex; flex-wrap:wrap; justify-content:flex-end; gap:2px 14px; margin-top:10px; padding-top:8px;
+    border-top:1px solid var(--gridline); font-size:13px; color:var(--dim); font-variant-numeric:tabular-nums; }
+  .px .fairln b{ color:var(--text); font-weight:650; }
+  .px .fairln b.up{ color:var(--up); } .px .fairln b.down{ color:var(--down); }
+  .px .fairln a{ color:var(--accent-ink); white-space:nowrap; }
   .lede{ grid-column:1 / -1; display:flex; gap:12px; align-items:baseline; margin-top:12px; }
   .lede p{ font-size:15.5px; line-height:1.75; max-width:52em; }
+  .lede .at{ display:inline-block; margin-left:6px; font-size:12px; color:var(--muted); white-space:nowrap; }
   .metaline{ grid-column:1 / -1; display:flex; flex-wrap:wrap; gap:4px 22px; font-size:12px; color:var(--muted);
     margin-top:10px; padding-top:10px; border-top:1px solid var(--gridline); }
   .metaline b{ color:var(--dim); font-weight:600; }
@@ -166,6 +173,8 @@
   .verdict .pos b{ font-family:var(--serif); font-size:20px; color:var(--text); margin:0 2px; }
   .ruler{ width:100%; margin:6px 0 4px; }
   .ruler svg, .chart svg{ display:block; width:100%; overflow:visible; }
+  .chart svg{ touch-action:pan-y; -webkit-tap-highlight-color:transparent; }
+  .chart svg:focus:not(:focus-visible){ outline:none; }
   .concl{ font-size:14.5px; line-height:1.8; max-width:52em; margin-top:10px; }
   details.fold{ margin-top:10px; }
   details.fold > summary{ cursor:pointer; font-size:12.5px; color:var(--dim); min-height:32px; display:inline-flex; align-items:center; gap:6px; }
@@ -189,6 +198,12 @@
   .t .rowh{ color:var(--dim); white-space:nowrap; }
   .t .ser{ font-family:var(--serif); font-size:15px; font-weight:600; }
   .t td .sub{ display:block; font-size:11.5px; color:var(--muted); line-height:1.5; margin-top:2px; white-space:normal; }
+  /* 事实表: 数字右对齐不换行; 文字型值 (字符串 / unit=text) 左对齐可换行, 超过 28 字的整段放到项目名下面 (跨两列) */
+  .t td.txt{ text-align:left; white-space:normal; }
+  .t td .ftv{ display:inline-block; max-width:22em; overflow-wrap:anywhere; }
+  .t td .ftx{ display:block; margin-top:4px; max-width:48em; color:var(--text); font-size:13px; line-height:1.65; overflow-wrap:anywhere; }
+  .t td .per-m{ display:none; }
+  table.t.facts td:first-child, .t td .sub{ overflow-wrap:anywhere; }   /* 标签/注里的长标识符 (us-gaap:…|2026|Q2|…) 可断, 不撑宽列 */
   .pstrip{ display:block; }
   .legend{ display:flex; flex-wrap:wrap; gap:4px 16px; font-size:12px; color:var(--dim); margin:4px 0 2px; }
   .legend i{ display:inline-block; width:14px; height:0; border-top:2px solid; vertical-align:middle; margin-right:6px; }
@@ -280,22 +295,27 @@
     .page{ padding:0 16px calc(40px + var(--sab)); }
     .cotabs .in{ padding:0 8px; }
     .banner{ padding:0 16px; }
-    .mast{ grid-template-columns:1fr; padding-top:18px; }
+    .mast{ grid-template-columns:minmax(0,1fr); padding-top:18px; }
     .px{ text-align:left; }
-    .px .row{ justify-content:flex-start; }
+    .px .row, .px .fairln{ justify-content:flex-start; }
     .co-name{ font-size:27px; }
     .co-en{ font-size:15px; }
     .px .v{ font-size:34px; }
     .lede{ flex-direction:column; gap:6px; }
     .lede p{ font-size:14.5px; }
-    .changes, .grid2{ grid-template-columns:1fr; }
+    .changes, .grid2{ grid-template-columns:minmax(0,1fr); }
     .deltas{ margin-top:18px; }
-    .verdict{ grid-template-columns:1fr; }
+    .verdict{ grid-template-columns:minmax(0,1fr); }
     .verdict .pos{ text-align:left; }
     .dim-b{ padding-left:0; }
     details.dim > summary{ grid-template-columns:16px minmax(0,1fr); }
     .dim-s{ grid-column:2; white-space:normal; }
-    ol.wc li, ol.tl li{ grid-template-columns:1fr; gap:2px; }
+    ol.wc li, ol.tl li{ grid-template-columns:minmax(0,1fr); gap:2px; }
+    table.t.facts th.fp, table.t.facts td.fp{ display:none; }      /* 手机: 期间并到数值下面, 给项目名让出宽度 */
+    table.t.facts td .per-m{ display:block; }
+    .t td.wr{ white-space:normal; }                                /* DCF「FCF 率 起 → 终」在窄屏折成两行, 三列情景放得下 */
+    .lede .at{ display:block; margin:4px 0 0; }
+    .px .fairln a{ display:inline-block; padding:12px 0; margin:-12px 0; }   /* 命中区 ~44px, 行高不变 */
     .cotab{ flex:1 1 0; padding:6px 6px 4px; justify-content:center; flex-wrap:wrap; gap:0 6px; }
     .cotab .nm{ display:none; }
     .filters button, .more-btn, details.fold > summary, ol.tl .x{ min-height:44px; }
@@ -352,7 +372,9 @@
       wc_more:"显示全部 {n} 条", wc_less:"收起",
       d_title:"量化层 30 日", d_price:"价格", d_pe:"PE (TTM) 变动", d_evs:"EV/Sales 变动", d_filings:"新公告",
       d_news:"新闻标题", d_since:"相对研究时价", d_since_s:"研究日 {d} 收盘 {p}", d_none:"量化层未就绪",
-      fair:"合理区间", fair_mid:"中值", fair_lo:"区间下沿", fair_hi:"区间上沿", pos_in:"现价位于区间", to_mid:"距中值",
+      fair:"合理区间", fair_mid:"中值", fair_lo:"区间下沿", fair_hi:"区间上沿", pos_in:"现价位于区间", pos_in_res:"研究时价位于区间", to_mid:"距中值",
+      to_mid_def:"距中值 = 中值 ÷ 价格 − 1: 负数表示价格高于中值 (要跌这么多才回到中值), 正数表示低于中值。页眉、估值结论与价格图提示框用同一口径, 与 data/index.json 的 upside_to_mid_pct 相同。",
+      to_val:"估值结论", lede_at:"研究判断 · {d} 收盘 {p}", fin_gap:"{g} 无 EDGAR 值, 图中留空不连线", stitched:"别名补齐",
       ruler_now:"现价", ruler_res:"研究时", sc_bear:"熊", sc_base:"基准", sc_bull:"牛",
       method_note:"区间怎么来的", price_chart:"近 52 周价格与合理区间", price_chart_cap:"周收盘 (拆股调整); 色带 = 合理区间, 横线 = 中值",
       mult:"倍数与历史分位", col_metric:"指标", col_now:"现值", col_res:"研究时", col_dist:"历史分布 (P10–P90)",
@@ -408,7 +430,9 @@
       wc_more:"Show all {n}", wc_less:"Show fewer",
       d_title:"Quant layer, 30 days", d_price:"Price", d_pe:"PE (TTM) change", d_evs:"EV/Sales change", d_filings:"New filings",
       d_news:"Headlines", d_since:"Vs research price", d_since_s:"close {p} on {d}", d_none:"Quant layer not ready",
-      fair:"Fair range", fair_mid:"mid", fair_lo:"range low", fair_hi:"range high", pos_in:"Price sits at", to_mid:"vs mid",
+      fair:"Fair range", fair_mid:"mid", fair_lo:"range low", fair_hi:"range high", pos_in:"Price sits at", pos_in_res:"Research price sits at", to_mid:"to mid",
+      to_mid_def:"To mid = mid ÷ price − 1: negative means the price is above the mid (it would have to fall that much to get there), positive means below. The header, the valuation block and the price-chart tooltip use this one definition, the same as upside_to_mid_pct in data/index.json.",
+      to_val:"Valuation", lede_at:"research view · close {p} on {d}", fin_gap:"{g}: no EDGAR value, left blank (not bridged)", stitched:"alias-filled",
       ruler_now:"Price", ruler_res:"Research", sc_bear:"Bear", sc_base:"Base", sc_bull:"Bull",
       method_note:"How the range is built", price_chart:"52-week price vs fair range", price_chart_cap:"Weekly close (split-adjusted); band = fair range, line = mid",
       mult:"Multiples and history", col_metric:"Metric", col_now:"Now", col_res:"At research", col_dist:"History (P10–P90)",
@@ -544,6 +568,9 @@
     }
   }
   function mdDate(s){ return s ? String(s).slice(0,10) : "—"; }
+  /* 距中值 = 中值 ÷ 价格 − 1 (与 build.py index_entry 的 upside_to_mid_pct 同一公式); 页眉、估值结论、价格图提示框都走这里 */
+  function toMidPct(price, mid){ return isNum(price) && isNum(mid) && price > 0 ? (mid / price - 1) * 100 : null; }
+  function posInRange(price, fr){ return isNum(price) && fr && isNum(fr.low) && isNum(fr.high) && fr.high > fr.low ? (price - fr.low) / (fr.high - fr.low) * 100 : null; }
   function hm(iso){ return iso ? String(iso).slice(0,16).replace("T"," ") : "—"; }
 
   var PILL = {
@@ -639,12 +666,13 @@
         "<span>" + esc(t("chg_1m")) + ' <b class="' + dirCls(ps.chg_1m_pct) + '">' + fmtSigned(ps.chg_1m_pct, 1, "%") + "</b></span>" +
         "<span>" + esc(t("chg_ytd")) + ' <b class="' + dirCls(ps.chg_ytd_pct) + '">' + fmtSigned(ps.chg_ytd_pct, 1, "%") + "</b></span>" +
         "<span>" + esc(t("chg_1y")) + ' <b class="' + dirCls(ps.chg_1y_pct) + '">' + fmtSigned(ps.chg_1y_pct, 1, "%") + "</b></span>" +
-        "<span>" + esc(t("w52")) + " " + fmt(ps.low_52w, 2) + "–" + fmt(ps.high_52w, 2) + "</span></div></div>";
+        "<span>" + esc(t("w52")) + " " + fmt(ps.low_52w, 2) + "–" + fmt(ps.high_52w, 2) + "</span></div>" + fairLine() + "</div>";
     } else {
       h += '<div class="px"><div class="lab">' + esc(t("px_research")) + " · " + esc(v.price_date) + '</div><div><span class="v">' +
-        fmt(v.price, 2) + '</span></div><div class="row"><span>' + esc(t("px_quant_missing")) + "</span></div></div>";
+        fmt(v.price, 2) + '</span></div><div class="row"><span>' + esc(t("px_quant_missing")) + "</span></div>" + fairLine() + "</div>";
     }
-    h += '<div class="lede">' + pill("st", s.stance) + "<p>" + inline(s.one_liner) + "</p></div>";
+    h += '<div class="lede">' + pill("st", s.stance) + "<p>" + inline(s.one_liner) +
+      (v.price_date ? '<span class="at">' + esc(t("lede_at", {d: v.price_date, p: fmt(v.price, 2)})) + "</span>" : "") + "</p></div>";
     var fresh = !q ? '<span class="fv-pill warn">' + esc(t("never")) + "</span>"
       : (q.stale ? '<span class="fv-pill warn" title="' + esc(q.stale_reason || "") + '">' + esc(t("stale")) + "</span>"
                  : '<span class="fv-pill pass">' + esc(t("fresh")) + "</span>");
@@ -663,6 +691,18 @@
     else bn.hidden = true;
   }
 
+  /* 页眉里的活结论: 合理区间 (研究层) × 现价 (量化层, 每日) —— 首屏就能看到跟着股价走的读数 */
+  function fairLine(){
+    var fr = DOC.valuation && DOC.valuation.fair_range, live = livePrice() != null, px = refPrice();
+    if(!fr || !isNum(fr.low) || !isNum(fr.high)) return "";
+    var pos = posInRange(px, fr), tm = toMidPct(px, fr.mid);
+    return '<div class="fairln"><span>' + esc(t("fair")) + " <b>" + fmt(fr.low, 0) + "–" + fmt(fr.high, 0) + "</b></span>" +
+      "<span>" + esc(t("fair_mid")) + " <b>" + fmt(fr.mid, 0) + "</b></span>" +
+      "<span>" + esc(t(live ? "pos_in" : "pos_in_res")) + " <b>" + (isNum(pos) ? fmt(pos, 0) + "%" : "—") + "</b></span>" +
+      '<span title="' + esc(t("to_mid_def")) + '">' + esc(t("to_mid")) + ' <b class="' + dirCls(tm) + '">' + fmtSigned(tm, 1, "%") + "</b></span>" +
+      '<a href="#sec-valuation">' + esc(t("to_val")) + " ↓</a></div>";
+  }
+
   function secHead(key, cap){
     return '<div class="sec-h"><h2>' + esc(t(key)) + '</h2><span class="cap">' + esc(t(cap)) + "</span></div>";
   }
@@ -679,9 +719,10 @@
       return '<li><span class="dt">' + esc(w.date) + '</span><div><div class="tags">' + pill("dir", w.direction) + link +
         '</div><div class="tx">' + inline(w.text) + srcLinks(w.source_ids) + "</div></div></li>";
     });
-    var shown = WC_OPEN ? rows : rows.slice(0, 6);
+    var lim = window.matchMedia("(max-width: 760px)").matches ? 3 : 6;       // 手机默认 3 条, 估值结论离首屏近一点
+    var shown = WC_OPEN ? rows : rows.slice(0, lim);
     var h = secHead("sec_changes", "cap_changes") + '<div class="changes"><div><ol class="wc">' + shown.join("") + "</ol>";
-    if(rows.length > 6) h += '<button type="button" class="more-btn" id="wcMore">' + esc(WC_OPEN ? t("wc_less") : t("wc_more", {n: rows.length})) + "</button>";
+    if(rows.length > lim) h += '<button type="button" class="more-btn" id="wcMore">' + esc(WC_OPEN ? t("wc_less") : t("wc_more", {n: rows.length})) + "</button>";
     h += '</div><div class="deltas"><h3>' + esc(t("d_title")) + "</h3>";
     if(d){
       h += '<dl class="kv"><dt>' + esc(t("d_price")) + "</dt><dd>" + chgSpan(d.price_pct) + "</dd>" +
@@ -714,9 +755,11 @@
     return out;
   }
   function widthOf(el){ return Math.max(280, Math.round(el.getBoundingClientRect().width || el.clientWidth || 600)); }
-  var tipEl = null;
-  function showTip(html, x, y){
+  var tipEl = null, tipOwner = null, tipShownAt = 0;
+  function showTip(html, x, y, owner){
     tipEl = tipEl || document.getElementById("tip");
+    if(tipOwner && tipOwner !== owner){ var prev = tipOwner; tipOwner = null; prev(); }   // 上一张图的十字线一并收起
+    tipOwner = owner || null; tipShownAt = Date.now();
     tipEl.innerHTML = html; tipEl.hidden = false;
     var w = tipEl.offsetWidth, hgt = tipEl.offsetHeight, vw = window.innerWidth;
     var left = Math.min(vw - w - 8, x + 14), top = y - hgt - 12;
@@ -725,6 +768,7 @@
     tipEl.style.left = left + "px"; tipEl.style.top = top + "px";
   }
   function hideTip(){ (tipEl || document.getElementById("tip")).hidden = true; }
+  function dismissTip(){ var f = tipOwner; tipOwner = null; if(f) f(); else hideTip(); }
 
   /* 通用: 带十字准线的折线/柱图 (一个 y 轴; 不做双轴) */
   function xyChart(host, cfg){
@@ -806,26 +850,52 @@
     g.push('<line class="xh" x1="0" x2="0" y1="' + padT + '" y2="' + (padT + ph) + '" stroke="var(--muted)" stroke-width="1" visibility="hidden"/>');
     g.push('<rect class="hit" x="' + padL + '" y="' + padT + '" width="' + pw + '" height="' + ph + '" fill="transparent"/>');
     host.innerHTML = '<svg width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + " " + H + '" role="img" tabindex="0" aria-label="' + esc(cfg.aria || "") + '">' + g.join("") + "</svg>";
-    var svg = host.querySelector("svg"), xh = svg.querySelector(".xh"), cur = -1;
+    var svg = host.querySelector("svg"), xh = svg.querySelector(".xh"), cur = -1, down = false, ptrAt = 0;
+    function idxAt(clientX){
+      var r = svg.getBoundingClientRect(), x = (clientX - r.left) * (W / r.width);
+      return Math.max(0, Math.min(n - 1, Math.floor((x - padL) / bw)));
+    }
+    function hide(){
+      xh.setAttribute("visibility", "hidden"); cur = -1;
+      if(tipOwner === hide || !tipOwner){ tipOwner = null; hideTip(); }   // 浮层已归另一张图 (比如点了它, 本图随后失焦) 就不动它
+    }
     function at(i, cx, cy){
       if(i < 0 || i >= n){ return; }
       cur = i; xh.setAttribute("x1", X(i)); xh.setAttribute("x2", X(i)); xh.setAttribute("visibility", "visible");
-      showTip(cfg.tip(i), cx, cy);
+      showTip(cfg.tip(i), cx, cy, hide);
     }
-    svg.addEventListener("pointermove", function(ev){
-      var r = svg.getBoundingClientRect(), x = (ev.clientX - r.left) * (W / r.width);
-      at(Math.max(0, Math.min(n - 1, Math.floor((x - padL) / bw))), ev.clientX, ev.clientY);
+    // 鼠标: 悬停即读, 移出即收。触屏/笔: 点哪一期读哪一期 (按点的 x 坐标), 按住横拖可扫读;
+    // 抬手不收 (触屏抬手必触发 pointerleave), 点图外、滚页面、失焦才收。
+    svg.addEventListener("pointerdown", function(ev){
+      ptrAt = Date.now();
+      if(ev.pointerType === "mouse") return;
+      down = true;
+      at(idxAt(ev.clientX), ev.clientX, ev.clientY);
     });
-    svg.addEventListener("pointerleave", function(){ xh.setAttribute("visibility", "hidden"); hideTip(); });
-    svg.addEventListener("blur", function(){ xh.setAttribute("visibility", "hidden"); hideTip(); });
+    svg.addEventListener("pointermove", function(ev){
+      if(ev.pointerType !== "mouse" && !down) return;
+      at(idxAt(ev.clientX), ev.clientX, ev.clientY);
+    });
+    svg.addEventListener("pointerup", function(){ down = false; });
+    svg.addEventListener("pointercancel", function(){ down = false; });
+    svg.addEventListener("pointerleave", function(ev){ if(ev.pointerType === "mouse") hide(); });
+    svg.addEventListener("blur", hide);
     svg.addEventListener("keydown", function(ev){
-      if(ev.key !== "ArrowLeft" && ev.key !== "ArrowRight") return;
+      if(ev.key === "Escape"){ hide(); return; }
+      if(ev.key !== "ArrowLeft" && ev.key !== "ArrowRight" && ev.key !== "Home" && ev.key !== "End") return;
       ev.preventDefault();
-      var r = svg.getBoundingClientRect(), i = cur < 0 ? n - 1 : cur + (ev.key === "ArrowRight" ? 1 : -1);
+      var r = svg.getBoundingClientRect();
+      var i = ev.key === "Home" ? 0 : ev.key === "End" ? n - 1 : (cur < 0 ? n - 1 : cur + (ev.key === "ArrowRight" ? 1 : -1));
       i = Math.max(0, Math.min(n - 1, i));
       at(i, r.left + X(i) * r.width / W, r.top + padT + 10);
     });
-    svg.addEventListener("focus", function(){ var r = svg.getBoundingClientRect(); at(n - 1, r.left + X(n - 1) * r.width / W, r.top + padT + 10); });
+    svg.addEventListener("focus", function(){
+      var kb;
+      try{ kb = svg.matches(":focus-visible"); }catch(e){ kb = Date.now() - ptrAt > 800; }
+      if(!kb || cur >= 0) return;                   // 点/触进来的聚焦不弹; 只有键盘 Tab 进来才先显示最后一期
+      var r = svg.getBoundingClientRect();
+      at(n - 1, r.left + X(n - 1) * r.width / W, r.top + padT + 10);
+    });
   }
   function lastIdx(a){ for(var i = a.length - 1; i >= 0; i--) if(isNum(a[i])) return i; return -1; }
   function tipRows(title, rows){
@@ -926,15 +996,15 @@
 
   function renderValuation(){
     var v = DOC.valuation, fr = v.fair_range, q = Q(), px = refPrice(), ml = q && q.multiples_live, hpq = (q && q.historical_percentiles) || {};
-    var posPct = (isNum(px) && fr.high > fr.low) ? (px - fr.low) / (fr.high - fr.low) * 100 : null;
-    var toMid = isNum(px) ? (fr.mid / px - 1) * 100 : null;
+    var posPct = posInRange(px, fr), toMid = toMidPct(px, fr.mid);
     var h = secHead("sec_valuation", "cap_valuation");
     h += '<div class="verdict"><div class="big">' + esc(t("fair")) + " " + fmt(fr.low, 2) + " – " + fmt(fr.high, 2) +
-      ' <small>' + esc(t("fair_mid")) + " " + fmt(fr.mid, 2) + '</small></div><div class="pos">' + esc(t("pos_in")) +
-      ' <b>' + (isNum(posPct) ? fmt(posPct, 0) + "%" : "—") + "</b> · " + esc(t("to_mid")) + " " + chgSpan(toMid, 1) + "</div></div>";
+      ' <small>' + esc(t("fair_mid")) + " " + fmt(fr.mid, 2) + '</small></div><div class="pos">' + esc(t(livePrice() != null ? "pos_in" : "pos_in_res")) +
+      ' <b>' + (isNum(posPct) ? fmt(posPct, 0) + "%" : "—") + '</b> · <span title="' + esc(t("to_mid_def")) + '">' + esc(t("to_mid")) + "</span> " + chgSpan(toMid, 1) + "</div></div>";
     h += '<div class="ruler" id="ruler"></div>';
     h += '<p class="concl">' + inline(v.conclusion) + "</p>";
-    h += '<details class="fold"><summary>' + esc(t("method_note")) + '</summary><div class="body">' + inline(fr.method_note) + "</div></details>";
+    h += '<details class="fold"><summary>' + esc(t("method_note")) + '</summary><div class="body">' + inline(fr.method_note) +
+      '<p style="margin-top:6px">' + esc(t("to_mid_def")) + "</p></div></details>";
     if(q && q.price_series && (q.price_series.weekly_closes || []).length > 4){
       h += '<h3 class="sub-h">' + esc(t("price_chart")) + ' <span class="mut" style="font-weight:400;font-size:12px">' + esc(t("price_chart_cap")) + "</span></h3>";
       h += '<div class="chart" id="pxChart"></div>';
@@ -975,9 +1045,9 @@
     var dcf = v.dcf, sc = dcf.scenarios, keys = ["bear","base","bull"], lbl = {bear:"sc_bear", base:"sc_base", bull:"sc_bull"};
     h += '<div class="grid2"><div><h3 class="sub-h">' + esc(t("dcf")) + '</h3><div class="scroll"><table class="t"><thead><tr><th></th>' +
       keys.map(function(k){ return '<th class="num">' + esc(t(lbl[k])) + "</th>"; }).join("") + "</tr></thead><tbody>";
-    function arow(name, f){ h += '<tr><td class="rowh">' + esc(name) + "</td>" + keys.map(function(k){ var a = sc[k] ? sc[k].assumptions : null; return '<td class="num">' + (a ? f(a, sc[k]) : "—") + "</td>"; }).join("") + "</tr>"; }
+    function arow(name, f, cls){ h += '<tr><td class="rowh">' + esc(name) + "</td>" + keys.map(function(k){ var a = sc[k] ? sc[k].assumptions : null; return '<td class="num' + (cls ? " " + cls : "") + '">' + (a ? f(a, sc[k]) : "—") + "</td>"; }).join("") + "</tr>"; }
     arow(t("a_rev"), function(a){ return fmt(a.revenue_cagr_pct, 1) + "%"; });
-    arow(t("a_fcf"), function(a){ return (isNum(a.fcf_margin_start_pct) ? fmt(a.fcf_margin_start_pct, 1) + " → " : "") + fmt(a.fcf_margin_exit_pct, 1) + "%"; });
+    arow(t("a_fcf"), function(a){ return (isNum(a.fcf_margin_start_pct) ? fmt(a.fcf_margin_start_pct, 1) + " →<wbr> " : "") + fmt(a.fcf_margin_exit_pct, 1) + "%"; }, "wr");
     arow(t("a_wacc"), function(a){ return fmt(a.wacc_pct, 2) + "%"; });
     arow(t("a_tg"), function(a){ return fmt(a.terminal_growth_pct, 1) + "%"; });
     arow(t("a_years"), function(a){ return fmt(a.years, 0); });
@@ -1033,25 +1103,37 @@
       aria: t("price_chart"),
       tip: function(i){
         return tipRows(labels[i], [{color: "var(--c1)", value: fmt(vals[i], 2), name: t("px_now")},
-          {color: "var(--band-line)", value: fmtSigned((vals[i] / fr.mid - 1) * 100, 1, "%"), name: t("to_mid")}]);
+          {color: "var(--band-line)", value: fmtSigned(toMidPct(vals[i], fr.mid), 1, "%"), name: t("to_mid")}]);
       }
     });
   }
 
   /* ================================================================ 财务趋势图 (量化层 EDGAR 优先, 研究层序列兜底) */
+  /* x 轴 = 连续的财年号 (最近 10 年): 哪个序列缺哪年, 那一格留空 (柱不画、线断开), 不把两侧年份拼成相邻 */
+  var FY_RE = /^FY(\d{4})$/;
+  function fySlots(maps){
+    var ys = [];
+    maps.forEach(function(m){ Object.keys(m).forEach(function(y){ ys.push(+y); }); });
+    if(!ys.length) return [];
+    var hi = Math.max.apply(null, ys), lo = Math.max(Math.min.apply(null, ys), hi - 9), out = [];
+    for(var y = lo; y <= hi; y++) out.push(y);
+    return out;
+  }
   function finData(){
-    var q = Q(), ef = q && q.edgar_facts, out = {labels: [], rev: [], oi: [], fcf: [], ttm: [], src: "q", notes: []};
-    function byEnd(a){ var m = {}; (a || []).forEach(function(p){ m[p.end] = p; }); return m; }
+    var q = Q(), ef = q && q.edgar_facts, out = {labels: [], rev: [], oi: [], fcf: [], ttm: [], src: "q", gaps: []};
+    function byFY(a){ var m = {}; (a || []).forEach(function(p){ var mm = FY_RE.exec(p.label || ""); if(mm) m[+mm[1]] = p; }); return m; }
     if(ef && ef.revenue && (ef.revenue.annual || []).length){
-      var R = byEnd(ef.revenue.annual), O = byEnd(ef.operating_income && ef.operating_income.annual),
-          C = byEnd(ef.cfo && ef.cfo.annual), X = byEnd(ef.capex && ef.capex.annual);
-      var ends = Object.keys(R).sort().slice(-10);
-      ends.forEach(function(e){
-        out.labels.push(R[e].label); out.rev.push(R[e].value); out.oi.push(O[e] ? O[e].value : null);
-        out.fcf.push(C[e] && X[e] ? C[e].value - X[e].value : null); out.ttm.push(false);
+      var R = byFY(ef.revenue.annual), O = byFY(ef.operating_income && ef.operating_income.annual),
+          C = byFY(ef.cfo && ef.cfo.annual), X = byFY(ef.capex && ef.capex.annual), lastEnd = "";
+      fySlots([R, O, C]).forEach(function(y){
+        var r = R[y], o = O[y], c = C[y], x = X[y];
+        out.labels.push("FY" + y); out.rev.push(r ? r.value : null); out.oi.push(o ? o.value : null);
+        out.fcf.push(c && x ? c.value - x.value : null); out.ttm.push(false);
+        if(!r) out.gaps.push("FY" + y);
+        [r, o, c].forEach(function(p){ if(p && p.end > lastEnd) lastEnd = p.end; });
       });
       var tr = ef.revenue.ttm, to = ef.operating_income && ef.operating_income.ttm, tc = ef.cfo && ef.cfo.ttm, tx = ef.capex && ef.capex.ttm;
-      if(tr && isNum(tr.value) && tr.end > ends[ends.length - 1]){
+      if(tr && isNum(tr.value) && tr.end > lastEnd){
         out.labels.push("TTM " + tr.end.slice(0, 7)); out.rev.push(tr.value);
         out.oi.push(to && to.end === tr.end ? to.value : null);
         out.fcf.push(tc && tx && isNum(tc.value) && isNum(tx.value) && tc.end === tr.end && tx.end === tr.end ? tc.value - tx.value : null);
@@ -1060,10 +1142,23 @@
       return out;
     }
     var s = DOC.dimensions.financials_trend.series || {};
-    function pm(k){ var m = {}; ((s[k] || {}).points || []).forEach(function(p){ m[p.period] = p.value; }); return m; }
+    function pm(k){
+      var fy = {}, tt = {};
+      ((s[k] || {}).points || []).forEach(function(p){
+        var mm = FY_RE.exec(p.period || "");
+        if(mm) fy[+mm[1]] = p.value; else if(/^TTM/.test(p.period || "")) tt[p.period] = p.value;
+      });
+      return {fy: fy, ttm: tt};
+    }
     var r = pm("revenue"), o = pm("operating_income"), f = pm("fcf");
-    Object.keys(r).sort().slice(-11).forEach(function(k){
-      out.labels.push(k); out.rev.push(r[k]); out.oi.push(isNum(o[k]) ? o[k] : null); out.fcf.push(isNum(f[k]) ? f[k] : null); out.ttm.push(/TTM/.test(k));
+    fySlots([r.fy, o.fy, f.fy]).forEach(function(y){
+      out.labels.push("FY" + y); out.rev.push(isNum(r.fy[y]) ? r.fy[y] : null); out.oi.push(isNum(o.fy[y]) ? o.fy[y] : null);
+      out.fcf.push(isNum(f.fy[y]) ? f.fy[y] : null); out.ttm.push(false);
+      if(!isNum(r.fy[y])) out.gaps.push("FY" + y);
+    });
+    Object.keys(r.ttm).sort().slice(-1).forEach(function(k){
+      out.labels.push(k.replace(/^TTM\s*/, "TTM ")); out.rev.push(r.ttm[k]); out.oi.push(isNum(o.ttm[k]) ? o.ttm[k] : null);
+      out.fcf.push(isNum(f.ttm[k]) ? f.ttm[k] : null); out.ttm.push(true);
     });
     out.src = "r";
     return out;
@@ -1123,7 +1218,8 @@
       '<div class="chart fin-money"></div><h5 style="margin-top:14px">' + esc(t("fin_margin")) + ' <span class="mut" style="font-weight:400">' + esc(t("fin_margin_cap")) + "</span></h5>" +
       '<div class="legend"><span><i style="border-color:var(--c2)"></i>' + esc(t("s_opm")) + '</span><span><i style="border-color:var(--c3)"></i>' + esc(t("s_fcfm")) + "</span></div>" +
       '<div class="chart fin-margin"></div><details class="fold"><summary>' + esc(t("table_view")) + '</summary><div class="fin-table"></div></details>' +
-      '<p class="note">' + esc(d.src === "q" ? t("fin_src_q") : t("fin_src_r")) + (d.ttm.indexOf(true) >= 0 ? " · TTM " + (lang() === "en" ? "points are hollow" : "为空心点/浅色柱") : "") + "</p></div>";
+      '<p class="note">' + esc(d.src === "q" ? t("fin_src_q") : t("fin_src_r")) + (d.ttm.indexOf(true) >= 0 ? " · TTM " + (lang() === "en" ? "points are hollow" : "为空心点/浅色柱") : "") +
+      (d.gaps.length ? " · " + esc(t("fin_gap", {g: d.gaps.join(lang() === "en" ? ", " : "、")})) : "") + "</p></div>";
   }
   function edgarBlock(){
     var q = Q(), ef = q && q.edgar_facts;
@@ -1139,10 +1235,11 @@
     keys.forEach(function(kk){
       var k = kk[0], m = ef[k]; if(!m) return;
       var a = (m.annual || [])[m.annual.length - 1], qq = (m.quarterly || [])[m.quarterly.length - 1];
-      var ref = function(p){ return p ? esc((m.tag || "").replace(/^derived: .*/, "derived") + "|" + p.fy + "|" + p.fp + "|" + p.end + "|" + p.form + "|" + p.filed) : ""; };
-      h += '<tr><td class="nw">' + esc(kk[1] ? t(kk[1]) : ZH[k]) + '</td><td class="num" title="' + ref(a) + '">' + (a ? fv(k, a.value) + '<span class="sub">' + esc(a.label) + "</span>" : "—") +
+      var ref = function(p){ return p ? esc((p.tag || m.tag || "").replace(/^derived: .*/, "derived") + "|" + p.fy + "|" + p.fp + "|" + p.end + "|" + p.form + "|" + p.filed) : ""; };
+      var alias = function(p){ return p && p.tag ? " · " + esc(t("stitched")) : ""; };
+      h += '<tr><td class="nw">' + esc(kk[1] ? t(kk[1]) : ZH[k]) + '</td><td class="num" title="' + ref(a) + '">' + (a ? fv(k, a.value) + '<span class="sub">' + esc(a.label) + alias(a) + "</span>" : "—") +
         '</td><td class="num">' + (m.ttm && isNum(m.ttm.value) ? fv(k, m.ttm.value) + '<span class="sub">' + esc(m.ttm.end || "") + "</span>" : "—") +
-        '</td><td class="num" title="' + ref(qq) + '">' + (qq ? fv(k, qq.value) + '<span class="sub">' + esc(qq.label) + (qq.derived ? " · " + esc(t("derived")) : "") + "</span>" : "—") +
+        '</td><td class="num" title="' + ref(qq) + '">' + (qq ? fv(k, qq.value) + '<span class="sub">' + esc(qq.label) + (qq.derived ? " · " + esc(t("derived")) : "") + alias(qq) + "</span>" : "—") +
         '</td><td><span class="sub" style="margin:0">' + esc(m.tag || "—") + (m.tag_gap ? "<br>" + esc(m.tag_gap) : "") + "</span></td></tr>";
     });
     return h + "</tbody></table></div></div>";
@@ -1158,15 +1255,37 @@
       (changed ? '<span class="fv-pill info">' + esc(t("updated")) + "</span>" : "") + "</span>" +
       '<span class="dim-s">' + esc(t("facts")) + " " + n + " · " + esc(t("judg")) + " " + j + " · " + esc(d.last_reviewed) + "</span></summary>";
   }
+  /* 事实表: 数字 → 右对齐不换行; 文字型 (字符串值或 unit=text) → 左对齐可换行; 超过 28 字的整段放到项目名下 (跨数值列)。
+     手机上期间并进数值格 (.per-m), 期间列隐藏 —— 窄屏不再靠横滑才看得到数值。 */
+  var FACT_TEXT_MAX = 28;
+  var UNIT_WORD = {USD:"美元", USD_bn:"十亿美元", USD_mn:"百万美元", shares:"股", days:"天", x:"x", pct:"%"};
+  function isTextFact(f){ return typeof f.value === "string" || f.unit === "text"; }
+  function factValue(f){
+    var v = f.value, u = f.unit;
+    if(typeof v !== "string" || !u || u === "text") return fmtUnit(v, u);
+    // 字符串区间 + 数值单位 (如 "175–185" + USD_bn): 两端都按单位换算, 共同的单位后缀只写一次
+    var m = /^\s*([+-]?\d[\d,]*(?:\.\d+)?)\s*[–—-]\s*([+-]?\d[\d,]*(?:\.\d+)?)\s*$/.exec(v);
+    if(m){
+      var a = fmtUnit(+m[1].replace(/,/g, ""), u), b = fmtUnit(+m[2].replace(/,/g, ""), u);
+      var sx = / [^ ]+$/.exec(a), sfx = sx && b.slice(-sx[0].length) === sx[0] ? sx[0] : "";
+      return (sfx ? a.slice(0, -sfx.length) : a) + "–" + b;
+    }
+    return esc(v) + (UNIT_WORD[u] ? " " + esc(UNIT_WORD[u]) : "");
+  }
   function factsTable(facts){
     if(!facts || !facts.length) return "";
-    var h = '<div class="blk"><h5>' + esc(t("facts")) + '</h5><div class="scroll"><table class="t"><thead><tr><th>' + esc(t("f_label")) + '</th><th class="num">' +
-      esc(t("f_value")) + "</th><th>" + esc(t("f_period")) + "</th><th>" + esc(t("f_src")) + "</th></tr></thead><tbody>";
+    var h = '<div class="blk"><h5>' + esc(t("facts")) + '</h5><div class="scroll"><table class="t facts"><thead><tr><th>' + esc(t("f_label")) + '</th><th class="num">' +
+      esc(t("f_value")) + '</th><th class="fp">' + esc(t("f_period")) + "</th><th>" + esc(t("f_src")) + "</th></tr></thead><tbody>";
     facts.forEach(function(f){
       var unv = f.verified === false ? ' <span class="fv-pill warn">' + esc(t("unverified")) + "</span>" : "";
-      h += "<tr><td>" + inline(f.label) + unv + (f.note ? '<span class="sub">' + inline(f.note) + "</span>" : "") +
-        '</td><td class="num"' + (f.edgar_ref ? ' title="' + esc(f.edgar_ref) + '"' : "") + ">" + fmtUnit(f.value, f.unit) + '</td><td class="nw mut">' + esc(f.period) +
-        "</td><td>" + srcLinks(f.source_id) + "</td></tr>";
+      var per = f.period == null ? "" : String(f.period), perM = per ? '<span class="sub per-m">' + esc(per) + "</span>" : "";
+      var ttl = f.edgar_ref ? ' title="' + esc(f.edgar_ref) + '"' : "";
+      var lab = inline(f.label) + unv + (f.note ? '<span class="sub">' + inline(f.note) + "</span>" : "");
+      var txt = isTextFact(f), val = factValue(f), long = txt && String(f.value).length > FACT_TEXT_MAX;
+      h += "<tr>" + (long
+        ? '<td colspan="2">' + lab + '<span class="ftx"' + ttl + ">" + val + "</span>" + perM + "</td>"
+        : "<td>" + lab + '</td><td class="' + (txt ? "txt" : "num") + '"' + ttl + ">" + (txt ? '<span class="ftv">' + val + "</span>" : val) + perM + "</td>") +
+        '<td class="fp mut' + (per.length <= 14 ? " nw" : "") + '">' + esc(per) + "</td><td>" + srcLinks(f.source_id) + "</td></tr>";
     });
     return h + "</tbody></table></div></div>";
   }
@@ -1386,6 +1505,7 @@
     (DOC.meta.sources || []).forEach(function(s){ SRC_IDS[s.id] = s.title + " — " + s.publisher; });
     document.title = shortName(DOC.meta.name_cn) + " " + DOC.meta.ticker + " · " + t("title") + " · FairValpha";
     CHARTS = [];
+    dismissTip();
     renderMast(); renderChanges(); renderValuation(); renderDims(); renderLog(); renderSources(); renderFoot(); renderRail();
   }
 
@@ -1441,14 +1561,14 @@
   var rsT = null;
   function onResize(){
     clearTimeout(rsT);
-    rsT = setTimeout(function(){ CHARTS.forEach(function(c){ if(c.host && c.host.isConnected) c.fn(); }); }, 150);
+    rsT = setTimeout(function(){ dismissTip(); CHARTS.forEach(function(c){ if(c.host && c.host.isConnected) c.fn(); }); }, 150);
   }
 
   function boot(){
     fallbackHeader();
     if(window.fvShell){
       fvShell.onLang(renderAll);
-      fvShell.onTheme(function(){ CHARTS.forEach(function(c){ if(c.host && c.host.isConnected) c.fn(); }); });
+      fvShell.onTheme(function(){ dismissTip(); CHARTS.forEach(function(c){ if(c.host && c.host.isConnected) c.fn(); }); });
       var cr = document.getElementById("fvCrumb");
       if(cr) new MutationObserver(fixCrumb).observe(cr, {childList: true, characterData: true, subtree: true});
     }
@@ -1457,6 +1577,11 @@
     document.addEventListener("click", onClick);
     document.addEventListener("keydown", onKey);
     window.addEventListener("resize", onResize);
+    // 触屏的提示框: 点图外任何地方、或页面滚动了 (弹出后 300ms 起算, 躲开聚焦时的自动滚动), 就收起
+    document.addEventListener("pointerdown", function(ev){
+      if(tipOwner && !(ev.target.closest && ev.target.closest(".chart svg"))) dismissTip();
+    }, true);
+    window.addEventListener("scroll", function(){ if(tipOwner && Date.now() - tipShownAt > 300) dismissTip(); }, {passive: true});
     window.addEventListener("hashchange", function(){
       var h = (location.hash || "").slice(1).toUpperCase();
       if(INDEX && h && h !== CUR && (INDEX.companies || []).some(function(c){ return c.ticker === h; })){ loadDoc(h, false); return; }
