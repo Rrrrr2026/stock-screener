@@ -1,0 +1,1486 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>个股精研 · FairValpha</title>
+<meta name="description" content="少数公司的持续跟踪档案: 本期变化、估值结论 (三情景 DCF / 历史分位 / 可比) 与十六个研究维度, 数字可追溯到 SEC EDGAR 与公开来源。">
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="/shared/fv-shell.css?v=3">
+<style>
+  /* 个股精研 /deepdive/ —— 研究层 (research/deepdive/<ticker>/dossier.json, 研究员写) + 量化层 (服务器每日 09:15
+     research/deepdive/build.py 写进 data/<TICKER>.json)。页面只读 data/, 不做任何网络以外的计算假设。
+     令牌来自 /shared/fv-shell.css (与两市工作台同名同值); 这里内联一份核心令牌作兜底 (同 /data/ 的做法),
+     shell 没同步过来本页仍是对的皮肤。颜色铁律: 涨跌 = 裸色数字 (--up 红 / --down 绿); 状态 = .fv-pill 药丸。
+     图表三色 (营收蓝 / 经营利润橙 / FCF 青) 按 dataviz 校验器过了深浅两底 (--pairs all), 浅色青对比度不足 3:1
+     → 每张图都有终点直接标注 + 数据表视图 (relief rule)。 */
+  :root{
+    --bg:#0b1220; --card:#111a2e; --border:#1e2a44; --text:#e5e7eb; --dim:#9fb4d6; --muted:#7e93b8;
+    --head:#0e1830; --rowhover:#16223c; --input:#0e1830; --inputborder:#26344f; --gridline:#1b2640;
+    --accent:#2962ff; --accent-ink:#7ab0ff; --up:#f87171; --down:#4ade80;
+    --pass:#3ddc97; --pass-bg:rgba(61,220,151,.14); --pass-line:rgba(61,220,151,.38);
+    --fail:#ff5c5c; --fail-bg:rgba(255,92,92,.14); --fail-line:rgba(255,92,92,.38);
+    --warn:#f5b43c; --warn-bg:rgba(245,180,60,.14); --warn-line:rgba(245,180,60,.38);
+    --info:#7ab0ff; --info-bg:rgba(41,98,255,.22); --info-line:rgba(41,98,255,.5);
+    --shadow:0 6px 24px rgba(0,0,0,.35); --sab:env(safe-area-inset-bottom,0px);
+    --c1:#3987e5; --c2:#d95926; --c3:#199e70;
+    --band:rgba(122,176,255,.12); --band-line:rgba(122,176,255,.45);
+    --serif: Georgia, "Noto Serif SC", "Source Han Serif SC", "Songti SC", "STSong", "SimSun", serif;
+    --sans: -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+    color-scheme:dark;
+  }
+  :root[data-theme="light"], body.light{
+    --bg:#eef2f8; --card:#ffffff; --border:#d7e0ee; --text:#0f172a; --dim:#334155; --muted:#64748b;
+    --head:#eaf0f8; --rowhover:#eaf1fb; --input:#ffffff; --inputborder:#cbd5e1; --gridline:#e6ecf5;
+    --accent:#2962ff; --accent-ink:#0b57d0; --up:#ef4444; --down:#16a34a;
+    --pass:#0c8a54; --pass-bg:rgba(12,138,84,.12); --pass-line:rgba(12,138,84,.35);
+    --fail:#c22525; --fail-bg:rgba(194,37,37,.10); --fail-line:rgba(194,37,37,.32);
+    --warn:#9a6a00; --warn-bg:rgba(245,158,11,.14); --warn-line:rgba(245,158,11,.40);
+    --info:#0b57d0; --info-bg:rgba(41,98,255,.10); --info-line:rgba(41,98,255,.30);
+    --shadow:0 6px 20px rgba(15,23,42,.12);
+    --c1:#2a78d6; --c2:#eb6834; --c3:#1baf7a;
+    --band:rgba(11,87,208,.08); --band-line:rgba(11,87,208,.35);
+    color-scheme:light;
+  }
+  @media (prefers-color-scheme: light){
+    :root:not([data-theme="dark"]):not([data-theme="light"]){
+      --bg:#eef2f8; --card:#ffffff; --border:#d7e0ee; --text:#0f172a; --dim:#334155; --muted:#64748b;
+      --head:#eaf0f8; --rowhover:#eaf1fb; --input:#ffffff; --inputborder:#cbd5e1; --gridline:#e6ecf5;
+      --accent-ink:#0b57d0; --up:#ef4444; --down:#16a34a;
+      --pass:#0c8a54; --pass-bg:rgba(12,138,84,.12); --pass-line:rgba(12,138,84,.35);
+      --fail:#c22525; --fail-bg:rgba(194,37,37,.10); --fail-line:rgba(194,37,37,.32);
+      --warn:#9a6a00; --warn-bg:rgba(245,158,11,.14); --warn-line:rgba(245,158,11,.40);
+      --info:#0b57d0; --info-bg:rgba(41,98,255,.10); --info-line:rgba(41,98,255,.30);
+      --c1:#2a78d6; --c2:#eb6834; --c3:#1baf7a; --band:rgba(11,87,208,.08); --band-line:rgba(11,87,208,.35);
+      color-scheme:light;
+    }
+  }
+
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  html{ scroll-padding-top:112px; -webkit-text-size-adjust:100%; }
+  body{ background:var(--bg); color:var(--text); font:14px/1.65 var(--sans); overflow-x:hidden; }
+  a{ color:var(--accent-ink); text-decoration:none; }
+  a:hover{ text-decoration:underline; }
+  button{ font:inherit; color:inherit; }
+  :focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
+  .num, .t td.num{ font-variant-numeric:tabular-nums; }
+  .up{ color:var(--up); } .down{ color:var(--down); } .flat{ color:var(--dim); }
+  .mut{ color:var(--muted); } .dim{ color:var(--dim); }
+  .serif{ font-family:var(--serif); }
+  [hidden]{ display:none !important; }
+
+  /* ---- 外壳缺席时的极简页头 (同 /data/) ---- */
+  #fvFallback{ position:sticky; top:0; z-index:60; height:48px; display:flex; align-items:center;
+    gap:8px; padding:0 10px; background:var(--card); border-bottom:1px solid var(--border); }
+  #fvFallback a{ color:var(--dim); font-size:13px; font-weight:600; }
+  #fvFallback span{ font-size:14px; font-weight:600; color:var(--text); }
+
+  /* ---- 公司切换 (贴在外壳下) ---- */
+  .cotabs{ position:sticky; top:0; z-index:55; background:var(--card); border-bottom:1px solid var(--border); }
+  html.fv-shell-on .cotabs{ top:48px; }
+  .cotabs .in{ max-width:1180px; margin:0 auto; padding:0 20px; display:flex; gap:4px; }
+  .cotab{ flex:0 0 auto; min-height:46px; padding:6px 14px 4px; background:none; border:0; cursor:pointer;
+    border-bottom:2px solid transparent; display:flex; align-items:baseline; gap:8px; color:var(--dim); text-align:left; }
+  .cotab:hover{ color:var(--text); background:var(--rowhover); }
+  .cotab.on{ color:var(--text); border-bottom-color:var(--accent); }
+  .cotab b{ font-size:14px; letter-spacing:.02em; }
+  .cotab .nm{ font-size:12.5px; }
+  .cotab .d{ font-size:12px; font-variant-numeric:tabular-nums; }
+  .cotab .fv-pill{ font-size:10.5px; padding:0 6px; align-self:center; }
+
+  .banner{ max-width:1180px; margin:12px auto 0; padding:0 20px; }
+  .banner > div{ padding:8px 12px; border-radius:6px; font-size:12.5px; line-height:1.6;
+    background:var(--warn-bg); color:var(--warn); border:1px solid var(--warn-line); }
+
+  /* ---- 骨架: 桌面左侧章节栏 + 主栏 ---- */
+  .page{ max-width:1180px; margin:0 auto; padding:0 20px calc(48px + var(--sab)); }
+  .rail{ display:none; }
+  @media (min-width:1100px){
+    .page{ display:grid; grid-template-columns:152px minmax(0,1fr); gap:0 40px; }
+    .rail{ display:block; position:sticky; top:118px; align-self:start; max-height:calc(100vh - 132px);
+      overflow:auto; padding:22px 0 12px; font-size:12.5px; line-height:1.45; scrollbar-width:thin; }
+    .rail a{ display:block; padding:4px 0 4px 10px; color:var(--muted); border-left:2px solid var(--gridline); }
+    .rail a:hover{ color:var(--text); text-decoration:none; }
+    .rail a.on{ color:var(--text); border-left-color:var(--accent); }
+    .rail .grp{ margin:12px 0 4px 12px; font-size:11.5px; color:var(--dim); }
+    .rail a.sub{ padding-left:18px; font-size:12px; }
+  }
+  main{ min-width:0; }
+
+  /* ---- 页眉 ---- */
+  .mast{ display:grid; grid-template-columns:minmax(0,1fr) auto; gap:6px 40px; padding:26px 0 20px; }
+  .co{ min-width:0; }
+  .co-name{ font-family:var(--serif); font-size:36px; font-weight:600; line-height:1.12; letter-spacing:.01em; }
+  .co-en{ font-family:var(--serif); font-size:17px; color:var(--dim); margin-top:4px; }
+  .co-rest{ font-size:18px; font-weight:400; color:var(--dim); letter-spacing:0; }
+  .co-meta{ font-size:12.5px; color:var(--muted); margin-top:8px; }
+  .px{ text-align:right; align-self:end; }
+  .px .lab{ font-size:12px; color:var(--muted); }
+  .px .v{ font-family:var(--serif); font-size:42px; font-weight:600; line-height:1.05; }
+  .px .chg{ font-size:17px; font-weight:600; margin-left:10px; font-variant-numeric:tabular-nums; }
+  .px .row{ display:flex; gap:14px; justify-content:flex-end; flex-wrap:wrap; font-size:12.5px; margin-top:6px;
+    font-variant-numeric:tabular-nums; color:var(--muted); }
+  .px .row b{ font-weight:600; }
+  .lede{ grid-column:1 / -1; display:flex; gap:12px; align-items:baseline; margin-top:12px; }
+  .lede p{ font-size:15.5px; line-height:1.75; max-width:52em; }
+  .metaline{ grid-column:1 / -1; display:flex; flex-wrap:wrap; gap:4px 22px; font-size:12px; color:var(--muted);
+    margin-top:10px; padding-top:10px; border-top:1px solid var(--gridline); }
+  .metaline b{ color:var(--dim); font-weight:600; }
+  .metaline .fv-pill{ margin-left:6px; }
+
+  /* ---- 章节 ---- */
+  section.sec{ border-top:1px solid var(--border); padding:24px 0 26px; }
+  .sec-h{ display:flex; align-items:baseline; gap:12px; flex-wrap:wrap; margin-bottom:14px; }
+  .sec-h h2{ font-size:16px; font-weight:650; }
+  .sec-h .cap{ font-size:12px; color:var(--muted); }
+  h3.sub-h{ font-size:13.5px; font-weight:600; margin:22px 0 10px; color:var(--text); }
+
+  /* ---- 本期变化 ---- */
+  .changes{ display:grid; grid-template-columns:minmax(0,1.75fr) minmax(250px,1fr); gap:0 40px; }
+  ol.wc{ list-style:none; }
+  ol.wc li{ display:grid; grid-template-columns:84px minmax(0,1fr); gap:10px; padding:10px 0; border-bottom:1px solid var(--gridline); }
+  ol.wc li:first-child{ padding-top:2px; }
+  ol.wc .dt{ font-size:12.5px; color:var(--muted); font-variant-numeric:tabular-nums; padding-top:2px; }
+  ol.wc .tx{ font-size:14px; line-height:1.7; }
+  ol.wc .tags{ display:flex; gap:6px; flex-wrap:wrap; margin-bottom:3px; }
+  .dimlink{ font-size:12px; color:var(--dim); padding:4px 0; }
+  table.t.mult{ width:auto; min-width:100%; }
+  table.t.mult td.num, table.t.mult th.num{ width:1%; padding-left:16px; }
+  table.t.mult td.dist, table.t.mult th.dist{ padding-left:22px; }
+  .more-btn{ margin-top:10px; background:none; border:1px solid var(--inputborder); border-radius:6px; padding:6px 12px;
+    font-size:12.5px; color:var(--dim); cursor:pointer; min-height:36px; }
+  .more-btn:hover{ color:var(--text); border-color:var(--dim); }
+  .deltas h3{ font-size:13px; font-weight:600; color:var(--dim); margin-bottom:6px; }
+  dl.kv{ display:grid; grid-template-columns:minmax(0,1fr) auto; }
+  dl.kv dt, dl.kv dd{ padding:7px 0; border-bottom:1px solid var(--gridline); font-size:13px; }
+  dl.kv dt{ color:var(--dim); }
+  dl.kv dd{ text-align:right; font-variant-numeric:tabular-nums; font-weight:600; }
+  dl.kv dd .s{ font-weight:400; color:var(--muted); font-size:12px; margin-left:6px; }
+  .note{ font-size:12px; color:var(--muted); line-height:1.7; margin-top:8px; }
+
+  /* ---- 估值 ---- */
+  .verdict{ display:grid; grid-template-columns:minmax(0,1fr) auto; gap:4px 28px; align-items:end; margin-bottom:6px; }
+  .verdict .big{ font-family:var(--serif); font-size:26px; font-weight:600; line-height:1.2; }
+  .verdict .big small{ font-size:15px; color:var(--dim); font-weight:400; }
+  .verdict .pos{ text-align:right; font-size:12.5px; color:var(--muted); font-variant-numeric:tabular-nums; }
+  .verdict .pos b{ font-family:var(--serif); font-size:20px; color:var(--text); margin:0 2px; }
+  .ruler{ width:100%; margin:6px 0 4px; }
+  .ruler svg, .chart svg{ display:block; width:100%; overflow:visible; }
+  .concl{ font-size:14.5px; line-height:1.8; max-width:52em; margin-top:10px; }
+  details.fold{ margin-top:10px; }
+  details.fold > summary{ cursor:pointer; font-size:12.5px; color:var(--dim); min-height:32px; display:inline-flex; align-items:center; gap:6px; }
+  details.fold > summary::-webkit-details-marker{ display:none; }
+  details.fold > summary::before{ content:""; width:0; height:0; border-left:5px solid currentColor;
+    border-top:4px solid transparent; border-bottom:4px solid transparent; transition:transform .15s; }
+  details.fold[open] > summary::before{ transform:rotate(90deg); }
+  details.fold .body{ font-size:12.5px; color:var(--dim); line-height:1.8; padding:6px 0 4px 12px;
+    border-left:2px solid var(--gridline); max-width:60em; }
+  .grid2{ display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:0 36px; }
+
+  .scroll{ overflow-x:auto; -webkit-overflow-scrolling:touch; }
+  table.t{ width:100%; border-collapse:collapse; font-size:13px; }
+  .t th{ text-align:left; font-weight:500; color:var(--muted); font-size:12px; padding:7px 10px 7px 0;
+    border-bottom:1px solid var(--border); white-space:nowrap; vertical-align:bottom; }
+  .t td{ padding:8px 10px 8px 0; border-bottom:1px solid var(--gridline); vertical-align:top; }
+  .t th.num, .t td.num{ text-align:right; white-space:nowrap; font-variant-numeric:tabular-nums; }
+  .t td.nw{ white-space:nowrap; }
+  .t tr:last-child td{ border-bottom:0; }
+  .t tbody tr:hover td{ background:var(--rowhover); }
+  .t .rowh{ color:var(--dim); white-space:nowrap; }
+  .t .ser{ font-family:var(--serif); font-size:15px; font-weight:600; }
+  .t td .sub{ display:block; font-size:11.5px; color:var(--muted); line-height:1.5; margin-top:2px; white-space:normal; }
+  .pstrip{ display:block; }
+  .legend{ display:flex; flex-wrap:wrap; gap:4px 16px; font-size:12px; color:var(--dim); margin:4px 0 2px; }
+  .legend i{ display:inline-block; width:14px; height:0; border-top:2px solid; vertical-align:middle; margin-right:6px; }
+  .legend i.sq{ width:10px; height:10px; border:0; border-radius:2px; }
+  .legend i.ring{ width:9px; height:9px; border:2px solid; border-radius:50%; }
+
+  /* ---- 维度 ---- */
+  details.dim{ border-bottom:1px solid var(--gridline); }
+  details.dim > summary{ list-style:none; cursor:pointer; display:grid; grid-template-columns:16px minmax(0,1fr) auto;
+    gap:10px; align-items:center; min-height:52px; padding:9px 2px; }
+  details.dim > summary::-webkit-details-marker{ display:none; }
+  details.dim > summary:hover{ background:var(--rowhover); }
+  .chev{ width:16px; height:16px; stroke:var(--muted); fill:none; stroke-width:1.8; transition:transform .15s; }
+  details.dim[open] .chev{ transform:rotate(90deg); }
+  .dim-t{ font-size:15px; font-weight:600; }
+  .dim-t .en{ font-size:12px; color:var(--muted); font-weight:400; margin-left:8px; }
+  .dim-t .fv-pill{ margin-left:8px; font-size:10.5px; vertical-align:2px; }
+  .dim-s{ font-size:12px; color:var(--muted); white-space:nowrap; font-variant-numeric:tabular-nums; }
+  .dim-b{ padding:4px 0 26px 26px; }
+  .slc{ font-size:12.5px; color:var(--dim); border-left:2px solid var(--accent); padding:2px 0 2px 10px; margin:2px 0 14px; max-width:60em; }
+  .md{ max-width:47em; }
+  .md p{ margin:0 0 10px; }
+  .md h4{ font-size:13.5px; font-weight:650; margin:18px 0 6px; color:var(--text); }
+  .md h4:first-child{ margin-top:4px; }
+  .md h5{ font-size:13px; font-weight:600; margin:14px 0 4px; color:var(--dim); }
+  .md ul, .md ol{ padding-left:1.25em; margin:0 0 10px; }
+  .md li{ margin:5px 0; }
+  .md strong{ font-weight:650; }
+  .md code{ font-size:12px; background:var(--input); border:1px solid var(--gridline); border-radius:3px; padding:0 4px; }
+  sup.c{ font-size:10.5px; line-height:0; margin-left:1px; white-space:nowrap; }
+  sup.c a{ padding:9px 3px; margin:-9px -3px; }       /* 命中区放大到 ~28px, 行高与字距不变 */
+  .blk{ margin-top:18px; }
+  .blk > h5{ font-size:12.5px; font-weight:600; color:var(--dim); margin-bottom:6px; }
+  ul.judg{ list-style:none; }
+  ul.judg li{ padding:9px 0; border-bottom:1px solid var(--gridline); }
+  ul.judg li:last-child{ border-bottom:0; }
+  ul.judg .cl{ font-size:13.5px; line-height:1.7; }
+  ul.judg .im{ font-size:12.5px; color:var(--dim); line-height:1.7; margin-top:3px; }
+  ul.judg .im::before{ content:"含义 "; color:var(--muted); }
+  .pills{ display:inline-flex; gap:5px; margin-right:6px; vertical-align:1px; }
+  .chips{ display:flex; flex-wrap:wrap; gap:6px; }
+  .chip{ display:inline-flex; gap:6px; align-items:baseline; border:1px solid var(--gridline); border-radius:4px;
+    padding:2px 8px; font-size:12px; max-width:100%; }
+  .chip .k{ color:var(--muted); overflow-wrap:anywhere; }
+  .chip .v{ color:var(--text); font-variant-numeric:tabular-nums; font-weight:600; overflow-wrap:anywhere; }
+
+  /* ---- 跟踪日志 ---- */
+  .filters{ display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px; }
+  .filters button{ min-height:34px; padding:4px 12px; border:1px solid var(--inputborder); background:var(--input);
+    border-radius:6px; font-size:12.5px; color:var(--dim); cursor:pointer; }
+  .filters button.on{ background:var(--accent); border-color:var(--accent); color:#fff; }
+  .filters button .n{ opacity:.75; margin-left:4px; font-variant-numeric:tabular-nums; }
+  ol.tl{ list-style:none; }
+  ol.tl li{ display:grid; grid-template-columns:84px minmax(0,1fr); gap:10px; padding:10px 0; border-bottom:1px solid var(--gridline); }
+  ol.tl .dt{ font-size:12.5px; color:var(--muted); font-variant-numeric:tabular-nums; padding-top:1px; }
+  ol.tl .ti{ font-size:13.5px; font-weight:600; line-height:1.6; }
+  ol.tl .ti a{ color:var(--text); }
+  ol.tl .ti a:hover{ color:var(--accent-ink); }
+  ol.tl .de{ font-size:12.5px; color:var(--dim); line-height:1.7; margin-top:3px; max-width:60em; }
+  ol.tl .de.clamp{ display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; }
+  ol.tl .x{ font-size:12px; color:var(--accent-ink); background:none; border:0; cursor:pointer; padding:2px 0; }
+
+  /* ---- 来源 ---- */
+  ol.src{ list-style:none; font-size:12.5px; }
+  ol.src li{ display:grid; grid-template-columns:40px minmax(0,1fr); gap:6px; padding:7px 0; border-bottom:1px solid var(--gridline); }
+  ol.src li:target{ background:var(--info-bg); }
+  ol.src .id{ color:var(--muted); font-variant-numeric:tabular-nums; }
+  ol.src .tt{ color:var(--text); overflow-wrap:anywhere; }
+  ol.src .mt{ color:var(--muted); margin-top:2px; }
+  ol.src .nt{ color:var(--dim); margin-top:2px; }
+  ol.src .fv-pill{ font-size:10.5px; padding:0 6px; margin-left:6px; }
+
+  footer.foot{ border-top:1px solid var(--border); padding:18px 0 0; font-size:12px; color:var(--muted); line-height:1.8; max-width:62em; }
+  footer.foot p{ margin-bottom:6px; }
+
+  /* ---- 浮层 / 空态 ---- */
+  .tip{ position:fixed; z-index:90; pointer-events:none; background:var(--card); color:var(--text);
+    border:1px solid var(--border); box-shadow:var(--shadow); border-radius:6px; padding:8px 10px; font-size:12px;
+    line-height:1.55; max-width:280px; }
+  .tip .h{ color:var(--muted); margin-bottom:3px; }
+  .tip .r{ display:flex; align-items:center; gap:8px; }
+  .tip .r i{ width:12px; border-top:2px solid; }
+  .tip .r b{ font-variant-numeric:tabular-nums; }
+  .tip .r span{ color:var(--dim); }
+  .empty{ padding:30px 0; color:var(--muted); font-size:13px; }
+  .loading main{ opacity:.55; transition:opacity .2s; }
+
+  @media (max-width:760px){
+    .page{ padding:0 16px calc(40px + var(--sab)); }
+    .cotabs .in{ padding:0 8px; }
+    .banner{ padding:0 16px; }
+    .mast{ grid-template-columns:1fr; padding-top:18px; }
+    .px{ text-align:left; }
+    .px .row{ justify-content:flex-start; }
+    .co-name{ font-size:27px; }
+    .co-en{ font-size:15px; }
+    .px .v{ font-size:34px; }
+    .lede{ flex-direction:column; gap:6px; }
+    .lede p{ font-size:14.5px; }
+    .changes, .grid2{ grid-template-columns:1fr; }
+    .deltas{ margin-top:18px; }
+    .verdict{ grid-template-columns:1fr; }
+    .verdict .pos{ text-align:left; }
+    .dim-b{ padding-left:0; }
+    details.dim > summary{ grid-template-columns:16px minmax(0,1fr); }
+    .dim-s{ grid-column:2; white-space:normal; }
+    ol.wc li, ol.tl li{ grid-template-columns:1fr; gap:2px; }
+    .cotab{ flex:1 1 0; padding:6px 6px 4px; justify-content:center; flex-wrap:wrap; gap:0 6px; }
+    .cotab .nm{ display:none; }
+    .filters button, .more-btn, details.fold > summary, ol.tl .x{ min-height:44px; }
+    .dimlink{ display:inline-block; padding:12px 0; margin:-12px 0; }
+    table.t.mult td.num, table.t.mult th.num{ padding-left:10px; }
+    table.t.mult td.dist, table.t.mult th.dist{ padding-left:12px; }
+  }
+</style>
+</head>
+<body class="loading">
+<script>window.FV_SHELL_CFG={page:"deepdive", from:"us", markets:false};</script>
+<script src="/shared/fv-shell.js?v=3"></script>
+
+<nav class="cotabs" aria-label="公司"><div class="in" id="coTabs" role="tablist"></div></nav>
+<div class="banner" id="banner" hidden></div>
+
+<div class="page">
+  <nav class="rail" id="rail" aria-label="本页章节"></nav>
+  <main id="main">
+    <header class="mast" id="mast"><p class="empty" data-i18n="loading">加载中…</p></header>
+    <section class="sec" id="sec-changes" hidden></section>
+    <section class="sec" id="sec-valuation" hidden></section>
+    <section class="sec" id="sec-dims" hidden></section>
+    <section class="sec" id="sec-log" hidden></section>
+    <section class="sec" id="sec-sources" hidden></section>
+    <footer class="foot" id="foot"></footer>
+  </main>
+</div>
+<div class="tip" id="tip" role="tooltip" hidden></div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ================================================================ i18n (界面标签双语; 研究正文 v1 只中文) */
+  var T = {
+    zh:{
+      title:"个股精研", loading:"加载中…",
+      err_index:"data/index.json 读不到 —— 服务器日更 (每天 09:15) 还没跑过, 或数据没同步到本站。",
+      err_doc:"这家公司的数据文件读不到: ",
+      sec_changes:"本期变化", cap_changes:"研究层最近的变化 (新的在前) 与量化层 30 日读数",
+      sec_valuation:"估值结论", cap_valuation:"合理区间来自研究层; 现价与倍数来自量化层 (每日刷新)",
+      sec_dims:"研究维度", cap_dims:"十六个维度: 事实 → 数字 → 判断 → 对估值的含义",
+      sec_log:"跟踪日志", cap_log:"研究日志 + SEC 公告 + 新闻标题, 新的在前",
+      sec_sources:"来源清单", cap_sources:"正文里的 [N] 指向这里",
+      rail_top:"页首", rail_dims:"研究维度",
+      px_now:"现价", px_close:"收盘", px_research:"研究时价", px_quant_missing:"量化层未就绪, 显示研究时价",
+      chg_5d:"5日", chg_1m:"1月", chg_ytd:"年初至今", chg_1y:"1年", w52:"52周",
+      fy_end:"财年截至", research_v:"研究版本", research_asof:"研究截止", next_review:"下次复核",
+      quant_at:"量化层", next_earn:"下次财报", est:"预计", confirmed:"已定",
+      fresh:"新鲜", stale:"陈旧", never:"未就绪", updated:"有更新",
+      stale_banner:"量化层陈旧: {r} —— 现价与倍数截至 {d}, 不是今天。",
+      never_banner:"量化层还没有成功刷新过 —— 本页只显示研究层 (研究时价与研究时倍数)。",
+      wc_more:"显示全部 {n} 条", wc_less:"收起",
+      d_title:"量化层 30 日", d_price:"价格", d_pe:"PE (TTM) 变动", d_evs:"EV/Sales 变动", d_filings:"新公告",
+      d_news:"新闻标题", d_since:"相对研究时价", d_since_s:"研究日 {d} 收盘 {p}", d_none:"量化层未就绪",
+      fair:"合理区间", fair_mid:"中值", fair_lo:"区间下沿", fair_hi:"区间上沿", pos_in:"现价位于区间", to_mid:"距中值",
+      ruler_now:"现价", ruler_res:"研究时", sc_bear:"熊", sc_base:"基准", sc_bull:"牛",
+      method_note:"区间怎么来的", price_chart:"近 52 周价格与合理区间", price_chart_cap:"周收盘 (拆股调整); 色带 = 合理区间, 横线 = 中值",
+      mult:"倍数与历史分位", col_metric:"指标", col_now:"现值", col_res:"研究时", col_dist:"历史分布 (P10–P90)",
+      col_pct:"分位", col_p50:"中位", pe_ttm:"PE (TTM)", pe_fwd:"PE (前瞻)", ev_ebitda:"EV/EBITDA",
+      ev_sales:"EV/Sales", fcf_yield:"FCF 收益率", peg:"PEG", mult_note:"量化层公式", pct_method:"分位口径",
+      dcf:"三情景 DCF", a_rev:"营收 CAGR", a_fcf:"FCF 率 (起 → 终)", a_wacc:"WACC", a_tg:"永续增长",
+      a_years:"预测年数", a_prob:"权重", a_val:"每股价值", a_vs:"相对现价", dcf_notes:"逐项假设说明",
+      dcf_base:"起点", rdcf:"反向 DCF", rdcf_s:"按研究日价格 {p} 反推, 未来 10 年 FCF 需年增", comps:"可比公司", comps_notes:"各行口径说明",
+      c_tk:"代码", c_name:"公司", c_asof:"日期",
+      facts:"事实与数字", judg:"判断", flags:"量化读数", unverified:"未核", derived:"派生",
+      segs:"分部", people:"管理层与董事会", events:"催化剂日历", risks:"风险清单", qm:"量化观察指标", uq:"不可量化观察",
+      s_name:"分部", s_rev:"收入", s_oi:"经营利润", s_growth:"同比", s_share:"占比", s_period:"期间",
+      p_name:"姓名", p_role:"职务", p_since:"任职起", e_date:"日期", e_event:"事件", e_kind:"类别",
+      r_risk:"风险", r_prob:"概率", r_sev:"严重度", r_mit:"缓释", r_watch:"观察信号",
+      q_name:"指标", q_cur:"当前", q_thr:"触发条件", q_status:"状态",
+      f_label:"项目", f_value:"数值", f_period:"期间", f_src:"来源",
+      fin_money:"营收、经营利润与自由现金流", fin_money_cap:"单位: 亿美元; 公司财年口径",
+      fin_margin:"经营利润率与 FCF 率", fin_margin_cap:"单位: %",
+      s_revenue:"营收", s_oi:"经营利润", s_fcf:"自由现金流", s_opm:"经营利润率", s_fcfm:"FCF 率",
+      table_view:"数据表", fin_src_q:"数据: 量化层 EDGAR (FCF = CFO − 资本开支)", fin_src_r:"数据: 研究层序列 (量化层未就绪)",
+      edgar:"EDGAR 最新", ed_metric:"指标", ed_fy:"最新财年", ed_ttm:"TTM", ed_q:"最新季度", ed_tag:"标签",
+      log_all:"全部", log_research:"研究", log_filing:"SEC 公告", log_news:"新闻", log_more:"显示全部 {n} 条",
+      detail_more:"展开", detail_less:"收起",
+      src_pub:"发布", src_acc:"访问",
+      foot1:"研究层由 LLM 研究员按公开资料撰写并经批评家复核 (每周日 + 财报/重大事件触发更新), 每个数字与判断带来源号; 标「未核」的数字未能对一手来源核实。",
+      foot2:"量化层每日 09:15 (CEST) 由服务器自动刷新: 财务取 SEC EDGAR XBRL (原值原样, 展示时换算为亿美元), 价格、共识与新闻标题取 Yahoo Finance (二手; Tiingo 兜底价格)。倍数按 EDGAR TTM 由我方计算, 历史分位按申报日次日生效, 无前视。",
+      foot3:"本页是研究记录, 不构成投资建议。现价 (量化层) 与研究时价 (研究层) 始终分开显示。",
+      dir_positive:"利好", dir_negative:"利空", dir_neutral:"中性", dir_mixed:"分歧",
+      conf_high:"高置信", conf_medium:"中置信", conf_low:"低置信",
+      imp_confirms:"印证", imp_challenges:"挑战", imp_neutral:"中性", imp_unknown:"待定",
+      st_accumulate:"增持", st_hold:"持有", st_watch:"观察", st_trim:"减持", st_avoid:"回避",
+      lv_high:"高", lv_medium:"中", lv_low:"低",
+      qs_ok:"正常", qs_watch:"观察", qs_breach:"触发", qs_na:"—",
+      yes:"是", no:"否"
+    },
+    en:{
+      title:"Deep Dives", loading:"Loading…",
+      err_index:"data/index.json is unavailable — the daily server build (09:15) has not run yet, or the data is not synced to this site.",
+      err_doc:"Could not load this company's data file: ",
+      sec_changes:"What changed", cap_changes:"Latest research changes (newest first) and 30-day quant readings",
+      sec_valuation:"Valuation", cap_valuation:"Fair range from the research layer; live price and multiples from the quant layer (daily)",
+      sec_dims:"Research dimensions", cap_dims:"Sixteen dimensions: facts → numbers → judgments → valuation implications (research text in Chinese)",
+      sec_log:"Tracking log", cap_log:"Research log + SEC filings + headlines, newest first",
+      sec_sources:"Sources", cap_sources:"[N] in the text links here",
+      rail_top:"Top", rail_dims:"Dimensions",
+      px_now:"Price", px_close:"close", px_research:"Research price", px_quant_missing:"Quant layer not ready; showing the research price",
+      chg_5d:"5D", chg_1m:"1M", chg_ytd:"YTD", chg_1y:"1Y", w52:"52W",
+      fy_end:"Fiscal year ends", research_v:"Research version", research_asof:"Research as of", next_review:"Next review",
+      quant_at:"Quant layer", next_earn:"Next earnings", est:"estimated", confirmed:"confirmed",
+      fresh:"Fresh", stale:"Stale", never:"Not ready", updated:"Updated",
+      stale_banner:"Quant layer is stale: {r} — price and multiples are as of {d}, not today.",
+      never_banner:"The quant layer has never refreshed successfully — this page shows the research layer only.",
+      wc_more:"Show all {n}", wc_less:"Show fewer",
+      d_title:"Quant layer, 30 days", d_price:"Price", d_pe:"PE (TTM) change", d_evs:"EV/Sales change", d_filings:"New filings",
+      d_news:"Headlines", d_since:"Vs research price", d_since_s:"close {p} on {d}", d_none:"Quant layer not ready",
+      fair:"Fair range", fair_mid:"mid", fair_lo:"range low", fair_hi:"range high", pos_in:"Price sits at", to_mid:"vs mid",
+      ruler_now:"Price", ruler_res:"Research", sc_bear:"Bear", sc_base:"Base", sc_bull:"Bull",
+      method_note:"How the range is built", price_chart:"52-week price vs fair range", price_chart_cap:"Weekly close (split-adjusted); band = fair range, line = mid",
+      mult:"Multiples and history", col_metric:"Metric", col_now:"Now", col_res:"At research", col_dist:"History (P10–P90)",
+      col_pct:"Pctile", col_p50:"Median", pe_ttm:"PE (TTM)", pe_fwd:"PE (forward)", ev_ebitda:"EV/EBITDA",
+      ev_sales:"EV/Sales", fcf_yield:"FCF yield", peg:"PEG", mult_note:"Quant formulas", pct_method:"Percentile method",
+      dcf:"Three-scenario DCF", a_rev:"Revenue CAGR", a_fcf:"FCF margin (start → exit)", a_wacc:"WACC", a_tg:"Terminal growth",
+      a_years:"Years", a_prob:"Weight", a_val:"Value / share", a_vs:"Vs price", dcf_notes:"Assumption notes",
+      dcf_base:"Base year", rdcf:"Reverse DCF", rdcf_s:"At the research price {p}, 10-year FCF must grow", comps:"Comparables", comps_notes:"Row notes",
+      c_tk:"Ticker", c_name:"Company", c_asof:"As of",
+      facts:"Facts and numbers", judg:"Judgments", flags:"Quant readings", unverified:"Unverified", derived:"derived",
+      segs:"Segments", people:"Management and board", events:"Catalyst calendar", risks:"Risk register", qm:"Quant watch metrics", uq:"Qualitative observations",
+      s_name:"Segment", s_rev:"Revenue", s_oi:"Op. income", s_growth:"YoY", s_share:"Share", s_period:"Period",
+      p_name:"Name", p_role:"Role", p_since:"Since", e_date:"Date", e_event:"Event", e_kind:"Kind",
+      r_risk:"Risk", r_prob:"Prob.", r_sev:"Severity", r_mit:"Mitigant", r_watch:"Watch signal",
+      q_name:"Metric", q_cur:"Current", q_thr:"Trigger", q_status:"Status",
+      f_label:"Item", f_value:"Value", f_period:"Period", f_src:"Source",
+      fin_money:"Revenue, operating income and free cash flow", fin_money_cap:"USD 100M (亿美元); company fiscal years",
+      fin_margin:"Operating and FCF margins", fin_margin_cap:"%",
+      s_revenue:"Revenue", s_oi:"Operating income", s_fcf:"Free cash flow", s_opm:"Operating margin", s_fcfm:"FCF margin",
+      table_view:"Data table", fin_src_q:"Data: quant layer, EDGAR (FCF = CFO − capex)", fin_src_r:"Data: research series (quant layer not ready)",
+      edgar:"Latest EDGAR", ed_metric:"Metric", ed_fy:"Latest FY", ed_ttm:"TTM", ed_q:"Latest quarter", ed_tag:"Tag",
+      log_all:"All", log_research:"Research", log_filing:"SEC filings", log_news:"News", log_more:"Show all {n}",
+      detail_more:"More", detail_less:"Less",
+      src_pub:"published", src_acc:"accessed",
+      foot1:"The research layer is written by an LLM researcher from public sources and reviewed by a critic (weekly, plus earnings/major events); every number and judgment cites a source. Numbers marked Unverified could not be checked against a primary source.",
+      foot2:"The quant layer refreshes daily at 09:15 CEST: financials from SEC EDGAR XBRL (raw values, converted for display), prices, consensus and headlines from Yahoo Finance (secondary; Tiingo as price fallback). Multiples are computed from EDGAR TTM; historical percentiles take each filing from the next day, with no look-ahead.",
+      foot3:"This page is a research record, not investment advice. The live price (quant) and the research price are always shown separately.",
+      dir_positive:"Positive", dir_negative:"Negative", dir_neutral:"Neutral", dir_mixed:"Mixed",
+      conf_high:"High conf.", conf_medium:"Med. conf.", conf_low:"Low conf.",
+      imp_confirms:"Confirms", imp_challenges:"Challenges", imp_neutral:"Neutral", imp_unknown:"Unknown",
+      st_accumulate:"Accumulate", st_hold:"Hold", st_watch:"Watch", st_trim:"Trim", st_avoid:"Avoid",
+      lv_high:"High", lv_medium:"Med", lv_low:"Low",
+      qs_ok:"OK", qs_watch:"Watch", qs_breach:"Breach", qs_na:"—",
+      yes:"yes", no:"no"
+    }
+  };
+  var DIMS = ["overview_business_model","segments_products","financials_trend","cost_structure","customers",
+    "supply_chain_upstream_downstream","industry_landscape_competition","management_governance_capital_allocation",
+    "company_developments","industry_developments","policy_regulation","geopolitics","strategic_decisions_impact",
+    "risks","catalysts_calendar","quant_unquant_watchlist"];
+  var DIM_EN = {overview_business_model:"Business model", segments_products:"Segments & products",
+    financials_trend:"Financial trends", cost_structure:"Cost structure", customers:"Customers",
+    supply_chain_upstream_downstream:"Supply chain", industry_landscape_competition:"Competition",
+    management_governance_capital_allocation:"Management & capital allocation", company_developments:"Company news",
+    industry_developments:"Industry news", policy_regulation:"Policy & regulation", geopolitics:"Geopolitics",
+    strategic_decisions_impact:"Strategic decisions", risks:"Risks", catalysts_calendar:"Catalysts",
+    quant_unquant_watchlist:"Watchlist"};
+  var DIM_CN = {valuation:"估值", summary:"总述"};
+  var FORM_ZH = {"10-K":"年报 10-K","10-K/A":"年报修订 10-K/A","10-Q":"季报 10-Q","10-Q/A":"季报修订 10-Q/A",
+    "8-K":"临时公告 8-K","8-K/A":"临时公告修订 8-K/A","DEF 14A":"股东大会委托书 DEF 14A","DEFA14A":"补充委托材料 DEFA14A",
+    "SD":"冲突矿产 SD","ARS":"股东年报 ARS"};
+  var ITEM_ZH = {"1.01":"重大协议","1.02":"终止重大协议","2.01":"完成收购/处置","2.02":"业绩公告","2.03":"新增直接债务",
+    "2.05":"退出/处置成本","2.06":"重大减值","3.02":"未注册股权出售","5.02":"董事/高管变动","5.03":"章程修订",
+    "5.07":"股东大会表决","7.01":"Reg FD 披露","8.01":"其他事项","9.01":"财务报表与附件"};
+  var TYPE_ZH = {filing:"申报",earnings:"财报",news:"新闻",price:"价格",research:"研究",thesis_change:"论点变更",
+    policy:"政策",legal:"法律",management:"管理层",product:"产品",macro:"宏观",other:"其他"};
+  var KIND_ZH = {earnings:"财报",product:"产品",regulatory:"监管",legal:"法律",capital_markets:"资本市场",
+    macro:"宏观",management:"管理层",other:"其他"};
+  var SRC_ZH = {filing:"申报文件",ir:"公司 IR",regulator:"监管",court:"法院",press:"媒体",analyst:"分析师",
+    data:"数据",research:"研究",other:"其他"};
+
+  function lang(){ return (window.fvShell && window.fvShell.lang === "en") ? "en" : "zh"; }
+  function t(k, vars){
+    var d = T[lang()], s = (d && d[k] != null) ? d[k] : (T.zh[k] != null ? T.zh[k] : k);
+    if(vars) Object.keys(vars).forEach(function(v){ s = s.split("{" + v + "}").join(vars[v]); });
+    return s;
+  }
+
+  /* ================================================================ 外壳: 面包屑兜底 (同 /data/) */
+  var CRUMB = { zh:"个股精研", en:"Deep Dives" };
+  function fixCrumb(){
+    var el = document.getElementById("fvCrumb"); if(!el) return;
+    var want = CRUMB[lang()];
+    if(el.textContent !== want) el.textContent = want;     // 旧版 fv-shell.js 没有 site_deepdive 键时替它补上
+  }
+  function fallbackHeader(){
+    if(document.getElementById("fvShell") || document.getElementById("fvFallback")) return;
+    var h = document.createElement("header");
+    h.id = "fvFallback";
+    h.innerHTML = '<a href="/us/">←</a><span></span>';
+    h.querySelector("span").textContent = "FairValpha › " + CRUMB[lang()];
+    document.body.insertBefore(h, document.body.firstChild);
+  }
+
+  /* ================================================================ 格式化 */
+  function esc(s){ return String(s == null ? "" : s).replace(/&/g,"&amp;").replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;"); }
+  function isNum(x){ return typeof x === "number" && isFinite(x); }
+  function fmt(x, nd){
+    if(!isNum(x)) return "—";
+    return x.toLocaleString("en-US", {minimumFractionDigits:nd, maximumFractionDigits:nd});
+  }
+  function fmtSigned(x, nd, unit){
+    if(!isNum(x)) return "—";
+    var s = (x > 0 ? "+" : x < 0 ? "−" : "") + fmt(Math.abs(x), nd);
+    return s + (unit || "");
+  }
+  function dirCls(x){ return !isNum(x) || x === 0 ? "flat" : (x > 0 ? "up" : "down"); }
+  function chgSpan(x, nd, unit){ return '<span class="' + dirCls(x) + '">' + fmtSigned(x, nd == null ? 2 : nd, unit == null ? "%" : unit) + "</span>"; }
+  function yi(v){ return isNum(v) ? v / 1e8 : null; }                       // 美元 → 亿美元 (只在展示层换算)
+  function fmtMoney(v){
+    if(!isNum(v)) return "—";
+    var a = Math.abs(v);
+    if(a >= 1e8) return fmt(v / 1e8, a >= 1e11 ? 0 : (a >= 1e10 ? 1 : 2)) + " 亿美元";
+    if(a >= 1e4) return fmt(v / 1e4, 0) + " 万美元";
+    return fmt(v, 2) + " 美元";
+  }
+  function fmtShares(v){
+    if(!isNum(v)) return "—";
+    return Math.abs(v) >= 1e8 ? fmt(v / 1e8, 2) + " 亿股" : fmt(v, 0) + " 股";
+  }
+  function fmtAuto(v){
+    if(!isNum(v)) return v == null ? "—" : String(v);
+    var a = Math.abs(v), nd = a >= 1000 ? 0 : (a >= 100 ? 1 : (a >= 1 ? 2 : 4)), s = fmt(v, nd);
+    return nd ? s.replace(/(\.\d*?)0+$/, "$1").replace(/\.$/, "") : s;      // 只裁小数部分的尾零
+  }
+  function fmtUnit(v, unit){
+    if(v == null) return "—";
+    if(typeof v === "string") return esc(v);
+    if(typeof v === "boolean") return v ? t("yes") : t("no");
+    switch(unit){
+      case "USD": return fmtMoney(v);
+      case "USD_bn": return fmtMoney(v * 1e9);
+      case "USD_mn": return fmtMoney(v * 1e6);
+      case "pct": return fmt(v, Math.abs(v) >= 100 ? 0 : (Math.abs(v) >= 10 ? 1 : 2)) + "%";
+      case "shares": return fmtShares(v);
+      case "x": return fmt(v, 2) + "x";
+      case "days": return fmt(v, 0) + " 天";
+      case "count": return fmt(v, 0);
+      case "USD/share": case "USD/shares": return fmt(v, 2) + " 美元/股";
+      case "text": case "": case undefined: case null: return fmtAuto(v);
+      default: return fmtAuto(v) + " " + esc(unit);
+    }
+  }
+  function mdDate(s){ return s ? String(s).slice(0,10) : "—"; }
+  function hm(iso){ return iso ? String(iso).slice(0,16).replace("T"," ") : "—"; }
+
+  var PILL = {
+    dir:{positive:"pass",negative:"fail",neutral:"mute",mixed:"warn"},
+    conf:{high:"info",medium:"mute",low:"warn"},
+    imp:{confirms:"pass",challenges:"fail",neutral:"mute",unknown:"mute"},
+    st:{accumulate:"pass",hold:"info",watch:"mute",trim:"warn",avoid:"fail"},
+    lv:{high:"fail",medium:"warn",low:"mute"},
+    qs:{ok:"pass",watch:"warn",breach:"fail",na:"mute"}
+  };
+  function pill(kind, v, label){
+    if(v == null || v === "") return "";
+    var cls = (PILL[kind] && PILL[kind][v]) || "mute";
+    return '<span class="fv-pill ' + cls + '">' + esc(label || t(kind + "_" + v)) + "</span>";
+  }
+
+  /* ================================================================ Markdown 子集 + 来源号 */
+  var CITE_RE = /\[(\d{1,3}(?:\s*[,，、]\s*\d{1,3})*)\]/g;
+  var SRC_IDS = {};
+  function citeHTML(ids){
+    return '<sup class="c">[' + ids.map(function(n){
+      return SRC_IDS[n] ? '<a href="#src-' + n + '" title="' + esc(SRC_IDS[n]) + '">' + n + "</a>" : String(n);
+    }).join(",") + "]</sup>";
+  }
+  function inline(s){
+    var h = esc(s);
+    h = h.replace(/\[([^\]\n]{1,200})\]\((https?:\/\/[^\s)]+)\)/g, function(_, txt, url){
+      return '<a href="' + url + '" target="_blank" rel="noopener">' + txt + "</a>";
+    });
+    h = h.replace(/\*\*([^*\n]+)\*\*/g, "<strong>$1</strong>");
+    h = h.replace(/`([^`\n]+)`/g, "<code>$1</code>");
+    h = h.replace(CITE_RE, function(_, g){
+      return citeHTML(g.split(/\s*[,，、]\s*/).map(Number));
+    });
+    return h;
+  }
+  function srcLinks(ids){
+    if(ids == null) return "";
+    var a = Array.isArray(ids) ? ids : [ids];
+    a = a.filter(function(x){ return isNum(x); });
+    return a.length ? citeHTML(a) : "";
+  }
+  function md(text){
+    var lines = String(text || "").replace(/\r/g, "").split("\n"), out = [], list = null, para = [];
+    function flushP(){ if(para.length){ out.push("<p>" + inline(para.join(" ")) + "</p>"); para = []; } }
+    function flushL(){ if(list){ out.push("<" + list.tag + ">" + list.items.map(function(x){ return "<li>" + inline(x) + "</li>"; }).join("") + "</" + list.tag + ">"); list = null; } }
+    lines.forEach(function(raw){
+      var line = raw.replace(/\s+$/, ""), m;
+      if(!line.trim()){ flushP(); flushL(); return; }
+      if((m = /^(#{1,4})\s+(.*)$/.exec(line))){ flushP(); flushL(); out.push(m[1].length <= 2 ? "<h4>" + inline(m[2]) + "</h4>" : "<h5>" + inline(m[2]) + "</h5>"); return; }
+      if((m = /^\s*[-*•]\s+(.*)$/.exec(line))){ flushP(); if(!list || list.tag !== "ul"){ flushL(); list = {tag:"ul", items:[]}; } list.items.push(m[1]); return; }
+      if((m = /^\s*\d+[.)、]\s+(.*)$/.exec(line))){ flushP(); if(!list || list.tag !== "ol"){ flushL(); list = {tag:"ol", items:[]}; } list.items.push(m[1]); return; }
+      if(list && /^\s{2,}\S/.test(raw)){ list.items[list.items.length - 1] += " " + line.trim(); return; }
+      flushL(); para.push(line.trim());
+    });
+    flushP(); flushL();
+    return '<div class="md">' + out.join("") + "</div>";
+  }
+
+  /* ================================================================ 状态 */
+  var INDEX = null, DOC = null, CUR = null, LOGF = "all", CHARTS = [];
+  function Q(){ return (DOC && DOC.quant_layer) || null; }
+  function livePrice(){ var q = Q(); return q && q.price_series && isNum(q.price_series.last) ? q.price_series.last : null; }
+  function refPrice(){ var p = livePrice(); return p != null ? p : (DOC && DOC.valuation ? DOC.valuation.price : null); }
+  function isStale(q){ return !q || !!q.stale; }
+
+  /* ================================================================ 公司切换 */
+  function shortName(n){ return String(n || "").split(/\s*[(（,，]/)[0]; }
+  function renderTabs(){
+    var box = document.getElementById("coTabs");
+    box.innerHTML = (INDEX.companies || []).map(function(c){
+      var on = c.ticker === CUR;
+      var st = c.stale ? ' <span class="fv-pill warn" title="' + esc(c.stale_reason || "") + '">' + esc(t("stale")) + "</span>" : "";
+      return '<button type="button" role="tab" class="cotab' + (on ? " on" : "") + '" aria-selected="' + on +
+        '" data-t="' + esc(c.ticker) + '"><b>' + esc(c.ticker) + '</b><span class="nm">' + esc(shortName(c.name_cn)) +
+        '</span><span class="d ' + dirCls(c.chg_1d_pct) + '">' + fmtSigned(c.chg_1d_pct, 2, "%") + "</span>" + st + "</button>";
+    }).join("");
+  }
+
+  /* ================================================================ 页眉 */
+  function renderMast(){
+    var m = DOC.meta, s = DOC.summary, v = DOC.valuation, q = Q(), ps = q && q.price_series, ec = q && q.earnings_calendar;
+    var fye = m.fiscal_year_end || "";
+    var px = livePrice();
+    var main = shortName(m.name_cn), rest = String(m.name_cn || "").slice(main.length).replace(/^[\s,，]+/, "");
+    var h = '<div class="co"><h1 class="co-name">' + esc(main) + (rest ? ' <span class="co-rest">' + esc(rest) + "</span>" : "") +
+      '</h1><div class="co-en">' + esc(m.name_en) + "</div>" +
+      '<div class="co-meta">' + esc(m.exchange) + ": " + esc(m.ticker) + " &nbsp; " + esc(t("fy_end")) + " " + esc(fye) + "</div></div>";
+    if(px != null){
+      h += '<div class="px"><div class="lab">' + esc(t("px_now")) + " · " + esc(t("px_close")) + " " + esc(ps.as_of) + "</div>" +
+        '<div><span class="v">' + fmt(px, 2) + '</span><span class="chg ' + dirCls(ps.chg_1d_pct) + '">' + fmtSigned(ps.chg_1d_pct, 2, "%") + "</span></div>" +
+        '<div class="row"><span>' + esc(t("chg_5d")) + " <b class=\"" + dirCls(ps.chg_5d_pct) + '">' + fmtSigned(ps.chg_5d_pct, 1, "%") + "</b></span>" +
+        "<span>" + esc(t("chg_1m")) + ' <b class="' + dirCls(ps.chg_1m_pct) + '">' + fmtSigned(ps.chg_1m_pct, 1, "%") + "</b></span>" +
+        "<span>" + esc(t("chg_ytd")) + ' <b class="' + dirCls(ps.chg_ytd_pct) + '">' + fmtSigned(ps.chg_ytd_pct, 1, "%") + "</b></span>" +
+        "<span>" + esc(t("chg_1y")) + ' <b class="' + dirCls(ps.chg_1y_pct) + '">' + fmtSigned(ps.chg_1y_pct, 1, "%") + "</b></span>" +
+        "<span>" + esc(t("w52")) + " " + fmt(ps.low_52w, 2) + "–" + fmt(ps.high_52w, 2) + "</span></div></div>";
+    } else {
+      h += '<div class="px"><div class="lab">' + esc(t("px_research")) + " · " + esc(v.price_date) + '</div><div><span class="v">' +
+        fmt(v.price, 2) + '</span></div><div class="row"><span>' + esc(t("px_quant_missing")) + "</span></div></div>";
+    }
+    h += '<div class="lede">' + pill("st", s.stance) + "<p>" + inline(s.one_liner) + "</p></div>";
+    var fresh = !q ? '<span class="fv-pill warn">' + esc(t("never")) + "</span>"
+      : (q.stale ? '<span class="fv-pill warn" title="' + esc(q.stale_reason || "") + '">' + esc(t("stale")) + "</span>"
+                 : '<span class="fv-pill pass">' + esc(t("fresh")) + "</span>");
+    var qAt = q ? (q.stale ? hm(q.last_good_at) : hm(q.refreshed_at)) : "—";
+    h += '<div class="metaline"><span>' + esc(t("research_v")) + " <b>" + esc(m.analyst_version) + "</b></span>" +
+      "<span>" + esc(t("research_asof")) + " <b>" + esc(m.as_of) + "</b></span>" +
+      (m.next_review_due ? "<span>" + esc(t("next_review")) + " <b>" + esc(m.next_review_due) + "</b></span>" : "") +
+      "<span>" + esc(t("quant_at")) + " <b>" + esc(qAt) + "</b>" + fresh + "</span>" +
+      (ec && ec.next_earnings_date ? "<span>" + esc(t("next_earn")) + " <b>" + esc(ec.next_earnings_date) + "</b> " +
+        esc(ec.confirmed ? t("confirmed") : t("est")) + "</span>" : "") + "</div>";
+    document.getElementById("mast").innerHTML = h;
+
+    var bn = document.getElementById("banner");
+    if(!q){ bn.innerHTML = "<div>" + esc(t("never_banner")) + "</div>"; bn.hidden = false; }
+    else if(q.stale){ bn.innerHTML = "<div>" + esc(t("stale_banner", {r: q.stale_reason || "—", d: mdDate(q.last_good_at)})) + "</div>"; bn.hidden = false; }
+    else bn.hidden = true;
+  }
+
+  function secHead(key, cap){
+    return '<div class="sec-h"><h2>' + esc(t(key)) + '</h2><span class="cap">' + esc(t(cap)) + "</span></div>";
+  }
+
+  /* ================================================================ 本期变化 */
+  var WC_OPEN = false;
+  function renderChanges(){
+    var wc = DOC.summary.what_changed || [], q = Q(), d = q && q.deltas;
+    var rows = wc.map(function(w){
+      var dn = w.dimension ? (DOC.dimensions[w.dimension] ? DOC.dimensions[w.dimension].title_cn : DIM_CN[w.dimension]) : "";
+      var link = w.dimension && DOC.dimensions[w.dimension]
+        ? '<a class="dimlink" href="#dim-' + esc(w.dimension) + '" data-open="' + esc(w.dimension) + '">' + esc(dn) + "</a>"
+        : (dn ? '<span class="dimlink">' + esc(dn) + "</span>" : "");
+      return '<li><span class="dt">' + esc(w.date) + '</span><div><div class="tags">' + pill("dir", w.direction) + link +
+        '</div><div class="tx">' + inline(w.text) + srcLinks(w.source_ids) + "</div></div></li>";
+    });
+    var shown = WC_OPEN ? rows : rows.slice(0, 6);
+    var h = secHead("sec_changes", "cap_changes") + '<div class="changes"><div><ol class="wc">' + shown.join("") + "</ol>";
+    if(rows.length > 6) h += '<button type="button" class="more-btn" id="wcMore">' + esc(WC_OPEN ? t("wc_less") : t("wc_more", {n: rows.length})) + "</button>";
+    h += '</div><div class="deltas"><h3>' + esc(t("d_title")) + "</h3>";
+    if(d){
+      h += '<dl class="kv"><dt>' + esc(t("d_price")) + "</dt><dd>" + chgSpan(d.price_pct) + "</dd>" +
+        "<dt>" + esc(t("d_pe")) + "</dt><dd>" + chgSpan(d.pe_ttm_change, 2, "x") + "</dd>" +
+        "<dt>" + esc(t("d_evs")) + "</dt><dd>" + chgSpan(d.ev_sales_change, 2, "x") + "</dd>" +
+        "<dt>" + esc(t("d_filings")) + "</dt><dd>" + fmt(d.new_filings_n, 0) + "</dd>" +
+        "<dt>" + esc(t("d_news")) + "</dt><dd>" + fmt(d.new_headlines_n, 0) + "</dd>" +
+        "<dt>" + esc(t("d_since")) + "</dt><dd>" + chgSpan(d.since_research_price_pct) +
+        '<span class="s">' + esc(t("d_since_s", {d: DOC.valuation.price_date, p: fmt(DOC.valuation.price, 2)})) + "</span></dd></dl>";
+    } else {
+      h += '<p class="note">' + esc(t("d_none")) + "</p>";
+    }
+    h += "</div></div>";
+    var sec = document.getElementById("sec-changes");
+    sec.innerHTML = h; sec.hidden = false;
+    var b = document.getElementById("wcMore");
+    if(b) b.addEventListener("click", function(){ WC_OPEN = !WC_OPEN; renderChanges(); });
+  }
+
+  /* ================================================================ SVG 小工具 */
+  function niceStep(span, n){
+    var raw = span / Math.max(1, n), p = Math.pow(10, Math.floor(Math.log10(raw))), f = raw / p;
+    return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10) * p;
+  }
+  function niceTicks(lo, hi, n){
+    if(lo === hi){ lo -= 1; hi += 1; }
+    var st = niceStep(hi - lo, n || 4), a = Math.floor(lo / st) * st, out = [];
+    for(var v = a; v <= hi + st * 0.001; v += st) out.push(+v.toFixed(10));
+    if(out[out.length - 1] < hi) out.push(out[out.length - 1] + st);
+    return out;
+  }
+  function widthOf(el){ return Math.max(280, Math.round(el.getBoundingClientRect().width || el.clientWidth || 600)); }
+  var tipEl = null;
+  function showTip(html, x, y){
+    tipEl = tipEl || document.getElementById("tip");
+    tipEl.innerHTML = html; tipEl.hidden = false;
+    var w = tipEl.offsetWidth, hgt = tipEl.offsetHeight, vw = window.innerWidth;
+    var left = Math.min(vw - w - 8, x + 14), top = y - hgt - 12;
+    if(left < 8) left = 8;
+    if(top < 60) top = y + 18;
+    tipEl.style.left = left + "px"; tipEl.style.top = top + "px";
+  }
+  function hideTip(){ (tipEl || document.getElementById("tip")).hidden = true; }
+
+  /* 通用: 带十字准线的折线/柱图 (一个 y 轴; 不做双轴) */
+  function xyChart(host, cfg){
+    var W = widthOf(host), H = cfg.height || 220, padL = cfg.padL || 52, padR = cfg.padR || 84, padT = 14, padB = 26;
+    var n = cfg.labels.length, pw = W - padL - padR, ph = H - padT - padB;
+    var vals = [];
+    cfg.series.forEach(function(s){ s.values.forEach(function(v){ if(isNum(v)) vals.push(v); }); });
+    if(cfg.band){ vals.push(cfg.band.lo, cfg.band.hi); }
+    if(!vals.length){ host.innerHTML = ""; return; }
+    var lo = Math.min.apply(null, vals), hi = Math.max.apply(null, vals);
+    if(cfg.zero){ lo = Math.min(0, lo); hi = Math.max(0, hi); }
+    else { var padv = (hi - lo) * 0.08 || Math.abs(hi) * 0.05 || 1; lo -= padv; hi += padv; }
+    var ticks = niceTicks(lo, hi, cfg.ticks || 4);
+    lo = Math.min(lo, ticks[0]); hi = Math.max(hi, ticks[ticks.length - 1]);
+    var bw = pw / n;
+    function X(i){ return padL + bw * (i + 0.5); }
+    function Y(v){ return padT + ph - (v - lo) / (hi - lo) * ph; }
+    var g = [];
+    ticks.forEach(function(tk){
+      var y = Y(tk).toFixed(1);
+      g.push('<line x1="' + padL + '" x2="' + (W - padR + 6) + '" y1="' + y + '" y2="' + y + '" stroke="var(--gridline)" stroke-width="1"/>');
+      g.push('<text x="' + (padL - 8) + '" y="' + (+y + 4) + '" text-anchor="end" font-size="11" fill="var(--muted)">' + esc(cfg.yFmt(tk)) + "</text>");
+    });
+    if(lo < 0 && hi > 0) g.push('<line x1="' + padL + '" x2="' + (W - padR + 6) + '" y1="' + Y(0).toFixed(1) + '" y2="' + Y(0).toFixed(1) + '" stroke="var(--muted)" stroke-width="1"/>');
+    if(cfg.band){
+      var y1 = Y(cfg.band.hi), y2 = Y(cfg.band.lo);
+      g.push('<rect x="' + padL + '" y="' + y1.toFixed(1) + '" width="' + pw + '" height="' + Math.max(1, y2 - y1).toFixed(1) + '" fill="var(--band)"/>');
+      if(isNum(cfg.band.mid)){
+        var ym = Y(cfg.band.mid).toFixed(1);
+        g.push('<line x1="' + padL + '" x2="' + (padL + pw) + '" y1="' + ym + '" y2="' + ym + '" stroke="var(--band-line)" stroke-width="1"/>');
+      }
+    }
+    var step = Math.max(1, Math.ceil(n / Math.max(2, Math.floor(pw / (cfg.xLabelW || 56)))));
+    cfg.labels.forEach(function(lb, i){
+      if(i % step !== 0 && i !== n - 1) return;
+      if(i !== n - 1 && n - 1 - i < step && (n - 1) % step !== 0) return;
+      g.push('<text x="' + X(i).toFixed(1) + '" y="' + (H - 6) + '" text-anchor="middle" font-size="11" fill="var(--muted)">' + esc(cfg.xFmt ? cfg.xFmt(lb, i) : lb) + "</text>");
+    });
+    var ends = [];
+    if(cfg.band && isNum(cfg.band.mid) && cfg.band.midLabel)
+      ends.push({y: Y(cfg.band.mid), x: padL + pw, text: cfg.band.midLabel, muted: true});
+    cfg.series.forEach(function(s){
+      if(s.type === "bar"){
+        var w = Math.min(24, Math.max(3, bw - 4)), base = Y(Math.max(lo, Math.min(0, hi)));
+        s.values.forEach(function(v, i){
+          if(!isNum(v)) return;
+          var y = Y(v), x = X(i) - w / 2, top = Math.min(y, base), hh = Math.max(1, Math.abs(base - y)), r = Math.min(4, hh, w / 2);
+          var op = (cfg.dimIdx && cfg.dimIdx.indexOf(i) >= 0) ? ' fill-opacity="0.45"' : "";
+          if(v >= 0) g.push('<path d="M' + x.toFixed(1) + "," + (top + hh).toFixed(1) + " V" + (top + r).toFixed(1) + " Q" + x.toFixed(1) + "," + top.toFixed(1) + " " + (x + r).toFixed(1) + "," + top.toFixed(1) + " H" + (x + w - r).toFixed(1) + " Q" + (x + w).toFixed(1) + "," + top.toFixed(1) + " " + (x + w).toFixed(1) + "," + (top + r).toFixed(1) + " V" + (top + hh).toFixed(1) + ' Z" fill="' + s.color + '"' + op + "/>");
+          else g.push('<rect x="' + x.toFixed(1) + '" y="' + top.toFixed(1) + '" width="' + w.toFixed(1) + '" height="' + hh.toFixed(1) + '" fill="' + s.color + '"' + op + "/>");
+        });
+        var li = lastIdx(s.values);
+        if(li >= 0 && s.endLabel !== false) ends.push({y: Y(s.values[li]), x: X(li) + w / 2 + 4, text: cfg.endFmt(s.values[li]), color: s.color, bar: true});
+      } else {
+        var d = "", pen = false;
+        s.values.forEach(function(v, i){
+          if(!isNum(v)){ pen = false; return; }
+          d += (pen ? " L" : " M") + X(i).toFixed(1) + "," + Y(v).toFixed(1); pen = true;
+        });
+        g.push('<path d="' + d + '" fill="none" stroke="' + s.color + '" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>');
+        if(s.dots !== false) s.values.forEach(function(v, i){
+          if(!isNum(v)) return;
+          var hollow = cfg.dimIdx && cfg.dimIdx.indexOf(i) >= 0;
+          g.push('<circle cx="' + X(i).toFixed(1) + '" cy="' + Y(v).toFixed(1) + '" r="4" fill="' + (hollow ? "var(--card)" : s.color) + '" stroke="' + (hollow ? s.color : "var(--card)") + '" stroke-width="2"/>');
+        });
+        var lj = lastIdx(s.values);
+        if(lj >= 0 && s.endLabel !== false) ends.push({y: Y(s.values[lj]), x: X(lj) + 8, text: cfg.endFmt(s.values[lj]), color: s.color});
+      }
+    });
+    // 终点标注: 纵向避让, 离开原位就加引线
+    ends.sort(function(a, b){ return a.y - b.y; });
+    for(var k = 1; k < ends.length; k++) if(ends[k].y - ends[k - 1].y < 14) ends[k].ly = (ends[k - 1].ly || ends[k - 1].y) + 14;
+    ends.forEach(function(e){
+      var ly = e.ly || e.y, lx = padL + pw + 8;
+      if(!e.muted && (Math.abs(ly - e.y) > 2 || e.x < lx - 12)) g.push('<line x1="' + (e.x - 2).toFixed(1) + '" y1="' + e.y.toFixed(1) + '" x2="' + (lx - 3) + '" y2="' + ly.toFixed(1) + '" stroke="var(--muted)" stroke-width="1"/>');
+      g.push('<text x="' + lx + '" y="' + (ly + 4).toFixed(1) + '" font-size="' + (e.muted ? 11 : 11.5) + '" font-weight="' + (e.muted ? 400 : 600) +
+        '" fill="var(--' + (e.muted ? "muted" : "text") + ')">' + esc(e.text) + "</text>");
+    });
+    g.push('<line class="xh" x1="0" x2="0" y1="' + padT + '" y2="' + (padT + ph) + '" stroke="var(--muted)" stroke-width="1" visibility="hidden"/>');
+    g.push('<rect class="hit" x="' + padL + '" y="' + padT + '" width="' + pw + '" height="' + ph + '" fill="transparent"/>');
+    host.innerHTML = '<svg width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + " " + H + '" role="img" tabindex="0" aria-label="' + esc(cfg.aria || "") + '">' + g.join("") + "</svg>";
+    var svg = host.querySelector("svg"), xh = svg.querySelector(".xh"), cur = -1;
+    function at(i, cx, cy){
+      if(i < 0 || i >= n){ return; }
+      cur = i; xh.setAttribute("x1", X(i)); xh.setAttribute("x2", X(i)); xh.setAttribute("visibility", "visible");
+      showTip(cfg.tip(i), cx, cy);
+    }
+    svg.addEventListener("pointermove", function(ev){
+      var r = svg.getBoundingClientRect(), x = (ev.clientX - r.left) * (W / r.width);
+      at(Math.max(0, Math.min(n - 1, Math.floor((x - padL) / bw))), ev.clientX, ev.clientY);
+    });
+    svg.addEventListener("pointerleave", function(){ xh.setAttribute("visibility", "hidden"); hideTip(); });
+    svg.addEventListener("blur", function(){ xh.setAttribute("visibility", "hidden"); hideTip(); });
+    svg.addEventListener("keydown", function(ev){
+      if(ev.key !== "ArrowLeft" && ev.key !== "ArrowRight") return;
+      ev.preventDefault();
+      var r = svg.getBoundingClientRect(), i = cur < 0 ? n - 1 : cur + (ev.key === "ArrowRight" ? 1 : -1);
+      i = Math.max(0, Math.min(n - 1, i));
+      at(i, r.left + X(i) * r.width / W, r.top + padT + 10);
+    });
+    svg.addEventListener("focus", function(){ var r = svg.getBoundingClientRect(); at(n - 1, r.left + X(n - 1) * r.width / W, r.top + padT + 10); });
+  }
+  function lastIdx(a){ for(var i = a.length - 1; i >= 0; i--) if(isNum(a[i])) return i; return -1; }
+  function tipRows(title, rows){
+    return '<div class="h">' + esc(title) + "</div>" + rows.map(function(r){
+      return '<div class="r"><i style="border-color:' + r.color + '"></i><b>' + esc(r.value) + "</b><span>" + esc(r.name) + "</span></div>";
+    }).join("");
+  }
+  function registerChart(host, fn){ CHARTS.push({host: host, fn: fn}); fn(); }
+
+  /* ================================================================ 估值 */
+  function rulerSVG(host){
+    var v = DOC.valuation, fr = v.fair_range, sc = v.dcf && v.dcf.scenarios || {}, px = livePrice(), rp = v.price;
+    var pts = [fr.low, fr.mid, fr.high, rp];
+    ["bear","base","bull"].forEach(function(k){ if(sc[k]) pts.push(sc[k].value_per_share); });
+    if(px != null) pts.push(px);
+    pts = pts.filter(isNum);
+    var lo = Math.min.apply(null, pts), hi = Math.max.apply(null, pts), span = hi - lo || hi * 0.2 || 1;
+    lo -= span * 0.06; hi += span * 0.06;
+    var W = widthOf(host), padL = 14, padR = 14, H = 150, axisY = 74;
+    function X(x){ return padL + (x - lo) / (hi - lo) * (W - padL - padR); }
+    var g = [];
+    var tk = niceTicks(lo, hi, Math.max(3, Math.floor(W / 110)));
+    tk.forEach(function(x){
+      if(x < lo || x > hi) return;
+      var xx = X(x).toFixed(1);
+      g.push('<line x1="' + xx + '" x2="' + xx + '" y1="' + (axisY - 3) + '" y2="' + (axisY + 3) + '" stroke="var(--muted)" stroke-width="1"/>');
+    });
+    g.push('<line x1="' + padL + '" x2="' + (W - padR) + '" y1="' + axisY + '" y2="' + axisY + '" stroke="var(--border)" stroke-width="1"/>');
+    // 合理区间色带 + 中值
+    g.push('<rect x="' + X(fr.low).toFixed(1) + '" y="' + (axisY - 16) + '" width="' + Math.max(2, X(fr.high) - X(fr.low)).toFixed(1) + '" height="32" fill="var(--band)" stroke="var(--band-line)" stroke-width="1"/>');
+    g.push('<line x1="' + X(fr.mid).toFixed(1) + '" x2="' + X(fr.mid).toFixed(1) + '" y1="' + (axisY - 16) + '" y2="' + (axisY + 16) + '" stroke="var(--accent-ink)" stroke-width="2"/>');
+    // 下方标注: 区间三点 + 三情景, 贪心避让成多行
+    var below = [
+      {x: fr.low, t: fmt(fr.low, 0), s: t("fair_lo")},
+      {x: fr.mid, t: fmt(fr.mid, 0), s: t("fair_mid"), strong: true},
+      {x: fr.high, t: fmt(fr.high, 0), s: t("fair_hi")}
+    ];
+    [["bear","sc_bear"],["base","sc_base"],["bull","sc_bull"]].forEach(function(p){
+      var s = sc[p[0]]; if(!s || !isNum(s.value_per_share)) return;
+      below.push({x: s.value_per_share, t: fmt(s.value_per_share, 0), s: t(p[1]), dot: true});
+    });
+    below.forEach(function(b){ b.px = X(b.x); b.w = Math.max(b.t.length * 7.4, b.s.length * 12) + 10; });
+    below.sort(function(a, b){ return a.px - b.px; });
+    var rows = [];
+    below.forEach(function(b){
+      var r = 0;
+      while(rows[r] && rows[r] > b.px - b.w / 2) r++;
+      rows[r] = b.px + b.w / 2; b.row = r;
+    });
+    below.forEach(function(b){
+      var y = axisY + 34 + b.row * 30, xx = b.px.toFixed(1);
+      if(b.dot) g.push('<circle cx="' + xx + '" cy="' + axisY + '" r="4.5" fill="var(--card)" stroke="var(--dim)" stroke-width="1.6"/>');
+      g.push('<line x1="' + xx + '" x2="' + xx + '" y1="' + (axisY + (b.dot ? 5 : 17)) + '" y2="' + (y - 12) + '" stroke="var(--gridline)" stroke-width="1"/>');
+      g.push('<text x="' + xx + '" y="' + y + '" text-anchor="middle" font-family="' + "Georgia, 'Noto Serif SC', serif" + '" font-size="' + (b.strong ? 14 : 13) + '" font-weight="' + (b.strong ? 700 : 600) + '" fill="var(--text)">' + esc(b.t) + "</text>");
+      if(b.s) g.push('<text x="' + xx + '" y="' + (y + 14) + '" text-anchor="middle" font-size="11" fill="var(--muted)">' + esc(b.s) + "</text>");
+    });
+    var maxRow = Math.max.apply(null, below.map(function(b){ return b.row; }));
+    H = axisY + 34 + maxRow * 30 + 22;
+    // 上方: 现价 (实心) 与研究时价 (空心), 两者太近就只画现价并在标签里并注
+    var tops = [];
+    if(px != null) tops.push({x: px, t: t("ruler_now") + " " + fmt(px, 2), main: true});
+    if(isNum(rp) && (px == null || Math.abs(px / rp - 1) > 0.004)) tops.push({x: rp, t: t("ruler_res") + " " + fmt(rp, 2)});
+    tops.sort(function(a, b){ return X(a.x) - X(b.x); });
+    tops.forEach(function(p, i){
+      var xx = X(p.x), y0 = axisY - 22;
+      var lab = p.t, tw = lab.length * 7.2 + 8, anchor = "middle", lx = xx;
+      if(lx - tw / 2 < 2){ anchor = "start"; lx = xx - 6; }
+      if(lx + tw / 2 > W - 2){ anchor = "end"; lx = xx + 6; }
+      if(tops.length === 2 && Math.abs(X(tops[0].x) - X(tops[1].x)) < tw){ anchor = i === 0 ? "end" : "start"; lx = xx + (i === 0 ? 4 : -4); }
+      if(p.main){
+        g.push('<line x1="' + xx.toFixed(1) + '" x2="' + xx.toFixed(1) + '" y1="' + (y0 - 4) + '" y2="' + (axisY + 18) + '" stroke="var(--text)" stroke-width="2"/>');
+        g.push('<path d="M' + (xx - 6).toFixed(1) + "," + (y0 - 10) + " L" + (xx + 6).toFixed(1) + "," + (y0 - 10) + " L" + xx.toFixed(1) + "," + (y0 - 2) + ' Z" fill="var(--text)"/>');
+        g.push('<text x="' + lx.toFixed(1) + '" y="' + (y0 - 16) + '" text-anchor="' + anchor + '" font-size="13" font-weight="700" fill="var(--text)">' + esc(lab) + "</text>");
+      } else {
+        g.push('<line x1="' + xx.toFixed(1) + '" x2="' + xx.toFixed(1) + '" y1="' + (y0 + 2) + '" y2="' + (axisY + 10) + '" stroke="var(--muted)" stroke-width="1.5"/>');
+        g.push('<circle cx="' + xx.toFixed(1) + '" cy="' + (y0 - 2) + '" r="4" fill="var(--card)" stroke="var(--muted)" stroke-width="1.6"/>');
+        g.push('<text x="' + lx.toFixed(1) + '" y="' + (y0 - 12) + '" text-anchor="' + anchor + '" font-size="12" fill="var(--muted)">' + esc(lab) + "</text>");
+      }
+    });
+    host.innerHTML = '<svg width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + " " + H + '" role="img" aria-label="' +
+      esc(t("fair") + " " + fmt(fr.low, 2) + "–" + fmt(fr.high, 2) + ", " + t("fair_mid") + " " + fmt(fr.mid, 2) + (px != null ? ", " + t("ruler_now") + " " + fmt(px, 2) : "")) + '">' + g.join("") + "</svg>";
+  }
+
+  function pctStrip(p, cur, res){
+    if(!p || !isNum(p.p10) || !isNum(p.p90)) return "";
+    var W = window.innerWidth < 560 ? 132 : 230, H = 22, lo = Math.min(p.p10, isNum(cur) ? cur : p.p10, isNum(res) ? res : p.p10),
+        hi = Math.max(p.p90, isNum(cur) ? cur : p.p90, isNum(res) ? res : p.p90), span = (hi - lo) || 1;
+    lo -= span * 0.06; hi += span * 0.06;
+    function X(v){ return 6 + (v - lo) / (hi - lo) * (W - 12); }
+    var g = '<line x1="' + X(p.p10).toFixed(1) + '" x2="' + X(p.p90).toFixed(1) + '" y1="11" y2="11" stroke="var(--border)" stroke-width="4" stroke-linecap="round"/>';
+    if(isNum(p.p25) && isNum(p.p75)) g += '<line x1="' + X(p.p25).toFixed(1) + '" x2="' + X(p.p75).toFixed(1) + '" y1="11" y2="11" stroke="var(--muted)" stroke-width="6" stroke-opacity=".55"/>';
+    if(isNum(p.p50)) g += '<line x1="' + X(p.p50).toFixed(1) + '" x2="' + X(p.p50).toFixed(1) + '" y1="4" y2="18" stroke="var(--dim)" stroke-width="2"/>';
+    if(isNum(res)) g += '<circle cx="' + X(res).toFixed(1) + '" cy="11" r="4" fill="var(--card)" stroke="var(--muted)" stroke-width="1.6"/>';
+    if(isNum(cur)) g += '<circle cx="' + X(cur).toFixed(1) + '" cy="11" r="5" fill="var(--accent-ink)" stroke="var(--card)" stroke-width="2"/>';
+    return '<svg class="pstrip" width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + " " + H + '" role="img" aria-label="P10 ' +
+      fmt(p.p10, 2) + " P50 " + fmt(p.p50, 2) + " P90 " + fmt(p.p90, 2) + '">' + g + "</svg>";
+  }
+
+  function renderValuation(){
+    var v = DOC.valuation, fr = v.fair_range, q = Q(), px = refPrice(), ml = q && q.multiples_live, hpq = (q && q.historical_percentiles) || {};
+    var posPct = (isNum(px) && fr.high > fr.low) ? (px - fr.low) / (fr.high - fr.low) * 100 : null;
+    var toMid = isNum(px) ? (fr.mid / px - 1) * 100 : null;
+    var h = secHead("sec_valuation", "cap_valuation");
+    h += '<div class="verdict"><div class="big">' + esc(t("fair")) + " " + fmt(fr.low, 2) + " – " + fmt(fr.high, 2) +
+      ' <small>' + esc(t("fair_mid")) + " " + fmt(fr.mid, 2) + '</small></div><div class="pos">' + esc(t("pos_in")) +
+      ' <b>' + (isNum(posPct) ? fmt(posPct, 0) + "%" : "—") + "</b> · " + esc(t("to_mid")) + " " + chgSpan(toMid, 1) + "</div></div>";
+    h += '<div class="ruler" id="ruler"></div>';
+    h += '<p class="concl">' + inline(v.conclusion) + "</p>";
+    h += '<details class="fold"><summary>' + esc(t("method_note")) + '</summary><div class="body">' + inline(fr.method_note) + "</div></details>";
+    if(q && q.price_series && (q.price_series.weekly_closes || []).length > 4){
+      h += '<h3 class="sub-h">' + esc(t("price_chart")) + ' <span class="mut" style="font-weight:400;font-size:12px">' + esc(t("price_chart_cap")) + "</span></h3>";
+      h += '<div class="chart" id="pxChart"></div>';
+    }
+    // 倍数表
+    var mv = v.multiples || {};
+    var rows = [
+      ["pe_ttm", ml && ml.pe_ttm, mv.pe_ttm, "x", hpq.pe_ttm, (v.historical_percentiles || {}).pe_ttm],
+      ["pe_fwd", ml && ml.pe_fwd, mv.pe_fwd, "x", null, null],
+      ["ev_ebitda", ml && ml.ev_ebitda, mv.ev_ebitda, "x", hpq.ev_ebitda, (v.historical_percentiles || {}).ev_ebitda],
+      ["ev_sales", ml && ml.ev_sales, mv.ev_sales, "x", hpq.ev_sales, (v.historical_percentiles || {}).ev_sales],
+      ["fcf_yield", ml && ml.fcf_yield_pct, mv.fcf_yield, "%", hpq.fcf_yield, (v.historical_percentiles || {}).fcf_yield],
+      ["peg", ml && ml.peg, mv.peg, "", null, null]
+    ];
+    h += '<h3 class="sub-h">' + esc(t("mult")) + '</h3><div class="legend"><span><i class="ring" style="border-color:var(--accent-ink);background:var(--accent-ink)"></i>' +
+      esc(t("col_now")) + '</span><span><i class="ring" style="border-color:var(--muted)"></i>' + esc(t("col_res")) + '</span><span><i style="border-color:var(--dim)"></i>' + esc(t("col_p50")) + "</span></div>";
+    h += '<div class="scroll"><table class="t mult"><thead><tr><th>' + esc(t("col_metric")) + '</th><th class="num">' + esc(t("col_now")) +
+      '</th><th class="num">' + esc(t("col_res")) + '</th><th class="num">' + esc(t("col_pct")) + '</th><th class="num">' + esc(t("col_p50")) +
+      '</th><th class="dist">' + esc(t("col_dist")) + "</th></tr></thead><tbody>";
+    rows.forEach(function(r){
+      var p = r[4] || r[5], nd = r[3] === "%" ? 2 : 1;
+      var val = function(x){ return isNum(x) ? fmt(x, nd) + r[3] : "—"; };
+      var pctCell = p ? fmt(p.percentile, 0) + '<span class="sub" title="n=' + fmt(p.n, 0) + '">' + esc(p.window) + (r[4] ? "" : " · " + t("col_res")) + "</span>" : "—";
+      h += '<tr><td class="rowh">' + esc(t(r[0])) + '</td><td class="num"><b>' + val(r[1]) + '</b></td><td class="num mut">' + val(r[2]) +
+        '</td><td class="num">' + pctCell + '</td><td class="num">' + (p ? val(p.p50) : "—") + '</td><td class="dist">' +
+        (p ? pctStrip(p, isNum(r[1]) ? r[1] : null, isNum(r[2]) ? r[2] : null) : "") + "</td></tr>";
+    });
+    h += "</tbody></table></div>";
+    var notes = [];
+    if(ml && ml.formula_note) notes.push("<p><b>" + esc(t("mult_note")) + "</b>: " + esc(ml.formula_note) + "</p>");
+    ["pe_ttm","ev_ebitda","ev_sales","fcf_yield"].forEach(function(k){
+      var p = hpq[k] || (v.historical_percentiles || {})[k];
+      if(p && p.method) notes.push("<p><b>" + esc(t(k)) + " · " + esc(t("pct_method")) + "</b>: " + esc(p.method) + "</p>");
+    });
+    if(mv.note) notes.push("<p><b>" + esc(t("col_res")) + "</b>: " + inline(mv.note) + srcLinks(mv.source_id) + "</p>");
+    if(notes.length) h += '<details class="fold"><summary>' + esc(t("mult_note")) + " / " + esc(t("pct_method")) + '</summary><div class="body">' + notes.join("") + "</div></details>";
+    // DCF
+    var dcf = v.dcf, sc = dcf.scenarios, keys = ["bear","base","bull"], lbl = {bear:"sc_bear", base:"sc_base", bull:"sc_bull"};
+    h += '<div class="grid2"><div><h3 class="sub-h">' + esc(t("dcf")) + '</h3><div class="scroll"><table class="t"><thead><tr><th></th>' +
+      keys.map(function(k){ return '<th class="num">' + esc(t(lbl[k])) + "</th>"; }).join("") + "</tr></thead><tbody>";
+    function arow(name, f){ h += '<tr><td class="rowh">' + esc(name) + "</td>" + keys.map(function(k){ var a = sc[k] ? sc[k].assumptions : null; return '<td class="num">' + (a ? f(a, sc[k]) : "—") + "</td>"; }).join("") + "</tr>"; }
+    arow(t("a_rev"), function(a){ return fmt(a.revenue_cagr_pct, 1) + "%"; });
+    arow(t("a_fcf"), function(a){ return (isNum(a.fcf_margin_start_pct) ? fmt(a.fcf_margin_start_pct, 1) + " → " : "") + fmt(a.fcf_margin_exit_pct, 1) + "%"; });
+    arow(t("a_wacc"), function(a){ return fmt(a.wacc_pct, 2) + "%"; });
+    arow(t("a_tg"), function(a){ return fmt(a.terminal_growth_pct, 1) + "%"; });
+    arow(t("a_years"), function(a){ return fmt(a.years, 0); });
+    arow(t("a_prob"), function(a, s){ return isNum(s.probability) ? fmt(s.probability * 100, 0) + "%" : "—"; });
+    h += '<tr><td class="rowh">' + esc(t("a_val")) + "</td>" + keys.map(function(k){ return '<td class="num ser">' + (sc[k] ? fmt(sc[k].value_per_share, 2) : "—") + "</td>"; }).join("") + "</tr>";
+    h += '<tr><td class="rowh">' + esc(t("a_vs")) + "</td>" + keys.map(function(k){ return '<td class="num">' + (sc[k] && isNum(px) ? chgSpan((sc[k].value_per_share / px - 1) * 100, 1) : "—") + "</td>"; }).join("") + "</tr>";
+    h += "</tbody></table></div>";
+    h += '<p class="note">' + esc(t("dcf_base")) + " " + esc(dcf.base_year) + " · FCF " + fmtMoney(dcf.base_fcf_usd) + " · " + fmtShares(dcf.shares_diluted) + srcLinks(dcf.source_ids) + "</p>";
+    var dn = keys.filter(function(k){ return sc[k] && (sc[k].assumptions.note || sc[k].note); }).map(function(k){
+      return "<p><b>" + esc(t(lbl[k])) + "</b>: " + inline(sc[k].assumptions.note || "") + (sc[k].note ? " " + inline(sc[k].note) : "") + "</p>";
+    });
+    if(dn.length) h += '<details class="fold"><summary>' + esc(t("dcf_notes")) + '</summary><div class="body">' + dn.join("") + "</div></details>";
+    var rd = v.reverse_dcf_implied_growth;
+    h += '</div><div><h3 class="sub-h">' + esc(t("rdcf")) + "</h3>";
+    if(rd){
+      h += '<p style="font-size:13.5px;line-height:1.75">' + esc(t("rdcf_s", {p: fmt(rd.price_used, 2)})) + ' <b class="serif" style="font-size:22px">' +
+        (isNum(rd.implied_fcf_cagr_10y_pct) ? fmt(rd.implied_fcf_cagr_10y_pct, 1) + "%" : "—") + '</b> <span class="mut">(WACC ' + fmt(rd.wacc_pct, 2) + "% · g " + fmt(rd.terminal_growth_pct, 1) + '%)</span></p>';
+      h += '<details class="fold"><summary>' + esc(t("dcf_notes")) + '</summary><div class="body">' + inline(rd.note) + "</div></details>";
+    }
+    h += "</div></div>";
+    var comps = v.comparables || [];
+    if(comps.length){
+      h += '<h3 class="sub-h">' + esc(t("comps")) + '</h3><div class="scroll"><table class="t"><thead><tr><th>' + esc(t("c_tk")) + "</th><th>" + esc(t("c_name")) +
+        '</th><th class="num">' + esc(t("pe_fwd")) + '</th><th class="num">EV/EBITDA</th><th class="num">EV/Sales</th><th class="num">' + (lang() === "en" ? "Fwd rev. growth" : "前瞻营收增速") +
+        '</th><th class="num">' + esc(t("fcf_yield")) + '</th><th class="num">' + esc(t("c_asof")) + "</th><th></th></tr></thead><tbody>";
+      comps.forEach(function(c){
+        h += "<tr><td><b>" + esc(c.ticker) + '</b></td><td class="nw">' + esc(c.name) +
+          '</td><td class="num">' + (isNum(c.pe_fwd) ? fmt(c.pe_fwd, 1) + "x" : "—") + '</td><td class="num">' + (isNum(c.ev_ebitda) ? fmt(c.ev_ebitda, 1) + "x" : "—") +
+          '</td><td class="num">' + (isNum(c.ev_sales) ? fmt(c.ev_sales, 1) + "x" : "—") + '</td><td class="num">' + (isNum(c.rev_growth_fwd_pct) ? fmt(c.rev_growth_fwd_pct, 1) + "%" : "—") +
+          '</td><td class="num">' + (isNum(c.fcf_yield_pct) ? fmt(c.fcf_yield_pct, 2) + "%" : "—") + '</td><td class="num mut">' + esc(c.as_of) + "</td><td>" + srcLinks(c.source_id) + "</td></tr>";
+      });
+      h += "</tbody></table></div>";
+      var cn = comps.filter(function(c){ return c.note; });
+      if(cn.length) h += '<details class="fold"><summary>' + esc(t("comps_notes")) + '</summary><div class="body">' + cn.map(function(c){
+        return "<p><b>" + esc(c.ticker) + "</b>: " + inline(c.note) + "</p>"; }).join("") + "</div></details>";
+    }
+    var sec = document.getElementById("sec-valuation");
+    sec.innerHTML = h; sec.hidden = false;
+    registerChart(document.getElementById("ruler"), function(){ rulerSVG(document.getElementById("ruler")); });
+    var pc = document.getElementById("pxChart");
+    if(pc) registerChart(pc, function(){ priceChart(pc); });
+  }
+
+  function priceChart(host){
+    var q = Q(), wk = q.price_series.weekly_closes, fr = DOC.valuation.fair_range;
+    var labels = wk.map(function(w){ return w.d; }), vals = wk.map(function(w){ return w.c; });
+    xyChart(host, {
+      labels: labels, height: 200, padR: 78, xLabelW: 64,
+      series: [{name: t("px_now"), color: "var(--c1)", values: vals, dots: false}],
+      band: {lo: fr.low, hi: fr.high, mid: fr.mid, midLabel: t("fair_mid") + " " + fmt(fr.mid, 0)},
+      yFmt: function(v){ return fmt(v, 0); }, endFmt: function(v){ return fmt(v, 2); },
+      xFmt: function(d){ return d.slice(2, 7); },
+      aria: t("price_chart"),
+      tip: function(i){
+        return tipRows(labels[i], [{color: "var(--c1)", value: fmt(vals[i], 2), name: t("px_now")},
+          {color: "var(--band-line)", value: fmtSigned((vals[i] / fr.mid - 1) * 100, 1, "%"), name: t("to_mid")}]);
+      }
+    });
+  }
+
+  /* ================================================================ 财务趋势图 (量化层 EDGAR 优先, 研究层序列兜底) */
+  function finData(){
+    var q = Q(), ef = q && q.edgar_facts, out = {labels: [], rev: [], oi: [], fcf: [], ttm: [], src: "q", notes: []};
+    function byEnd(a){ var m = {}; (a || []).forEach(function(p){ m[p.end] = p; }); return m; }
+    if(ef && ef.revenue && (ef.revenue.annual || []).length){
+      var R = byEnd(ef.revenue.annual), O = byEnd(ef.operating_income && ef.operating_income.annual),
+          C = byEnd(ef.cfo && ef.cfo.annual), X = byEnd(ef.capex && ef.capex.annual);
+      var ends = Object.keys(R).sort().slice(-10);
+      ends.forEach(function(e){
+        out.labels.push(R[e].label); out.rev.push(R[e].value); out.oi.push(O[e] ? O[e].value : null);
+        out.fcf.push(C[e] && X[e] ? C[e].value - X[e].value : null); out.ttm.push(false);
+      });
+      var tr = ef.revenue.ttm, to = ef.operating_income && ef.operating_income.ttm, tc = ef.cfo && ef.cfo.ttm, tx = ef.capex && ef.capex.ttm;
+      if(tr && isNum(tr.value) && tr.end > ends[ends.length - 1]){
+        out.labels.push("TTM " + tr.end.slice(0, 7)); out.rev.push(tr.value);
+        out.oi.push(to && to.end === tr.end ? to.value : null);
+        out.fcf.push(tc && tx && isNum(tc.value) && isNum(tx.value) && tc.end === tr.end && tx.end === tr.end ? tc.value - tx.value : null);
+        out.ttm.push(true);
+      }
+      return out;
+    }
+    var s = DOC.dimensions.financials_trend.series || {};
+    function pm(k){ var m = {}; ((s[k] || {}).points || []).forEach(function(p){ m[p.period] = p.value; }); return m; }
+    var r = pm("revenue"), o = pm("operating_income"), f = pm("fcf");
+    Object.keys(r).sort().slice(-11).forEach(function(k){
+      out.labels.push(k); out.rev.push(r[k]); out.oi.push(isNum(o[k]) ? o[k] : null); out.fcf.push(isNum(f[k]) ? f[k] : null); out.ttm.push(/TTM/.test(k));
+    });
+    out.src = "r";
+    return out;
+  }
+  function finCharts(box){
+    var d = finData();
+    if(!d.labels.length) return;
+    var dim = d.ttm.map(function(x, i){ return x ? i : -1; }).filter(function(i){ return i >= 0; });
+    var shortL = function(l){ return l.replace(/^FY20/, "FY").replace(/^TTM 20/, "TTM "); };
+    var money = box.querySelector(".fin-money"), margin = box.querySelector(".fin-margin");
+    registerChart(money, function(){
+      xyChart(money, {
+        labels: d.labels, height: 250, zero: true, padR: 92, xLabelW: 46, dimIdx: dim,
+        series: [
+          {name: t("s_revenue"), color: "var(--c1)", type: "bar", values: d.rev.map(yi)},
+          {name: t("s_oi"), color: "var(--c2)", values: d.oi.map(yi)},
+          {name: t("s_fcf"), color: "var(--c3)", values: d.fcf.map(yi)}
+        ],
+        yFmt: function(v){ return fmt(v, 0); }, endFmt: function(v){ return fmt(v, 0) + " 亿"; }, xFmt: shortL,
+        aria: t("fin_money"),
+        tip: function(i){
+          var rv = d.rev[i];
+          return tipRows(d.labels[i], [
+            {color: "var(--c1)", value: fmtMoney(rv), name: t("s_revenue")},
+            {color: "var(--c2)", value: fmtMoney(d.oi[i]) + (isNum(d.oi[i]) && isNum(rv) ? " (" + fmt(d.oi[i] / rv * 100, 1) + "%)" : ""), name: t("s_oi")},
+            {color: "var(--c3)", value: fmtMoney(d.fcf[i]) + (isNum(d.fcf[i]) && isNum(rv) ? " (" + fmt(d.fcf[i] / rv * 100, 1) + "%)" : ""), name: t("s_fcf")}]);
+        }
+      });
+    });
+    var opm = d.rev.map(function(r, i){ return isNum(r) && isNum(d.oi[i]) && r ? d.oi[i] / r * 100 : null; });
+    var fcm = d.rev.map(function(r, i){ return isNum(r) && isNum(d.fcf[i]) && r ? d.fcf[i] / r * 100 : null; });
+    registerChart(margin, function(){
+      xyChart(margin, {
+        labels: d.labels, height: 170, zero: true, padR: 72, xLabelW: 46, dimIdx: dim,
+        series: [{name: t("s_opm"), color: "var(--c2)", values: opm}, {name: t("s_fcfm"), color: "var(--c3)", values: fcm}],
+        yFmt: function(v){ return fmt(v, 0) + "%"; }, endFmt: function(v){ return fmt(v, 1) + "%"; }, xFmt: shortL,
+        aria: t("fin_margin"),
+        tip: function(i){ return tipRows(d.labels[i], [{color: "var(--c2)", value: fmt(opm[i], 1) + "%", name: t("s_opm")},
+          {color: "var(--c3)", value: fmt(fcm[i], 1) + "%", name: t("s_fcfm")}]); }
+      });
+    });
+    var tb = '<div class="scroll"><table class="t"><thead><tr><th></th><th class="num">' + esc(t("s_revenue")) + '</th><th class="num">' + esc(t("s_oi")) +
+      '</th><th class="num">' + esc(t("s_fcf")) + '</th><th class="num">' + esc(t("s_opm")) + '</th><th class="num">' + esc(t("s_fcfm")) + "</th></tr></thead><tbody>";
+    d.labels.forEach(function(l, i){
+      tb += '<tr><td class="nw">' + esc(l) + '</td><td class="num">' + fmt(yi(d.rev[i]), 1) + '</td><td class="num">' + fmt(yi(d.oi[i]), 1) +
+        '</td><td class="num">' + fmt(yi(d.fcf[i]), 1) + '</td><td class="num">' + fmt(opm[i], 1) + '</td><td class="num">' + fmt(fcm[i], 1) + "</td></tr>";
+    });
+    tb += "</tbody></table></div>";
+    box.querySelector(".fin-table").innerHTML = tb;
+  }
+  function finBlock(){
+    var d = finData();
+    if(!d.labels.length) return "";
+    return '<div class="blk fin" id="finBox"><h5>' + esc(t("fin_money")) + ' <span class="mut" style="font-weight:400">' + esc(t("fin_money_cap")) + "</span></h5>" +
+      '<div class="legend"><span><i class="sq" style="background:var(--c1)"></i>' + esc(t("s_revenue")) + '</span><span><i style="border-color:var(--c2)"></i>' + esc(t("s_oi")) +
+      '</span><span><i style="border-color:var(--c3)"></i>' + esc(t("s_fcf")) + "</span></div>" +
+      '<div class="chart fin-money"></div><h5 style="margin-top:14px">' + esc(t("fin_margin")) + ' <span class="mut" style="font-weight:400">' + esc(t("fin_margin_cap")) + "</span></h5>" +
+      '<div class="legend"><span><i style="border-color:var(--c2)"></i>' + esc(t("s_opm")) + '</span><span><i style="border-color:var(--c3)"></i>' + esc(t("s_fcfm")) + "</span></div>" +
+      '<div class="chart fin-margin"></div><details class="fold"><summary>' + esc(t("table_view")) + '</summary><div class="fin-table"></div></details>' +
+      '<p class="note">' + esc(d.src === "q" ? t("fin_src_q") : t("fin_src_r")) + (d.ttm.indexOf(true) >= 0 ? " · TTM " + (lang() === "en" ? "points are hollow" : "为空心点/浅色柱") : "") + "</p></div>";
+  }
+  function edgarBlock(){
+    var q = Q(), ef = q && q.edgar_facts;
+    if(!ef) return "";
+    var keys = [["revenue","s_revenue"],["gross_profit",""],["operating_income","s_oi"],["net_income",""],["eps_diluted",""],["cfo",""],["capex",""],
+      ["sbc",""],["buybacks",""],["dividends",""],["cash_and_st_investments",""],["long_term_debt",""],["equity",""],["rpo",""],["shares_outstanding",""]];
+    var ZH = {gross_profit:"毛利", net_income:"归母净利", eps_diluted:"稀释 EPS", cfo:"经营现金流", capex:"资本开支", sbc:"股权激励",
+      buybacks:"回购", dividends:"分红", cash_and_st_investments:"现金及短投", long_term_debt:"长期债务", equity:"股东权益", rpo:"剩余履约义务 RPO",
+      shares_outstanding:"流通股数"};
+    function fv(k, v){ return k === "eps_diluted" ? (isNum(v) ? fmt(v, 2) + " 美元" : "—") : (k === "shares_outstanding" ? fmtShares(v) : fmtMoney(v)); }
+    var h = '<div class="blk"><h5>' + esc(t("edgar")) + '</h5><div class="scroll"><table class="t"><thead><tr><th>' + esc(t("ed_metric")) + '</th><th class="num">' + esc(t("ed_fy")) +
+      '</th><th class="num">' + esc(t("ed_ttm")) + '</th><th class="num">' + esc(t("ed_q")) + "</th><th>" + esc(t("ed_tag")) + "</th></tr></thead><tbody>";
+    keys.forEach(function(kk){
+      var k = kk[0], m = ef[k]; if(!m) return;
+      var a = (m.annual || [])[m.annual.length - 1], qq = (m.quarterly || [])[m.quarterly.length - 1];
+      var ref = function(p){ return p ? esc((m.tag || "").replace(/^derived: .*/, "derived") + "|" + p.fy + "|" + p.fp + "|" + p.end + "|" + p.form + "|" + p.filed) : ""; };
+      h += '<tr><td class="nw">' + esc(kk[1] ? t(kk[1]) : ZH[k]) + '</td><td class="num" title="' + ref(a) + '">' + (a ? fv(k, a.value) + '<span class="sub">' + esc(a.label) + "</span>" : "—") +
+        '</td><td class="num">' + (m.ttm && isNum(m.ttm.value) ? fv(k, m.ttm.value) + '<span class="sub">' + esc(m.ttm.end || "") + "</span>" : "—") +
+        '</td><td class="num" title="' + ref(qq) + '">' + (qq ? fv(k, qq.value) + '<span class="sub">' + esc(qq.label) + (qq.derived ? " · " + esc(t("derived")) : "") + "</span>" : "—") +
+        '</td><td><span class="sub" style="margin:0">' + esc(m.tag || "—") + (m.tag_gap ? "<br>" + esc(m.tag_gap) : "") + "</span></td></tr>";
+    });
+    return h + "</tbody></table></div></div>";
+  }
+
+  /* ================================================================ 维度 */
+  var CHG_RE = /无实质变化|首次建档|无上期可比|无上次研究可比/;
+  function dimSummary(key, d){
+    var n = (d.facts || []).length, j = (d.judgments || []).length;
+    var changed = d.since_last_change && !CHG_RE.test(d.since_last_change);
+    return '<summary><svg class="chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3l5 5-5 5"/></svg>' +
+      '<span class="dim-t">' + esc(d.title_cn) + '<span class="en">' + esc(d.title_en || DIM_EN[key] || "") + "</span>" +
+      (changed ? '<span class="fv-pill info">' + esc(t("updated")) + "</span>" : "") + "</span>" +
+      '<span class="dim-s">' + esc(t("facts")) + " " + n + " · " + esc(t("judg")) + " " + j + " · " + esc(d.last_reviewed) + "</span></summary>";
+  }
+  function factsTable(facts){
+    if(!facts || !facts.length) return "";
+    var h = '<div class="blk"><h5>' + esc(t("facts")) + '</h5><div class="scroll"><table class="t"><thead><tr><th>' + esc(t("f_label")) + '</th><th class="num">' +
+      esc(t("f_value")) + "</th><th>" + esc(t("f_period")) + "</th><th>" + esc(t("f_src")) + "</th></tr></thead><tbody>";
+    facts.forEach(function(f){
+      var unv = f.verified === false ? ' <span class="fv-pill warn">' + esc(t("unverified")) + "</span>" : "";
+      h += "<tr><td>" + inline(f.label) + unv + (f.note ? '<span class="sub">' + inline(f.note) + "</span>" : "") +
+        '</td><td class="num"' + (f.edgar_ref ? ' title="' + esc(f.edgar_ref) + '"' : "") + ">" + fmtUnit(f.value, f.unit) + '</td><td class="nw mut">' + esc(f.period) +
+        "</td><td>" + srcLinks(f.source_id) + "</td></tr>";
+    });
+    return h + "</tbody></table></div></div>";
+  }
+  function judgList(js, title){
+    if(!js || !js.length) return "";
+    return '<div class="blk"><h5>' + esc(title || t("judg")) + '</h5><ul class="judg">' + js.map(function(j){
+      return '<li><div class="cl"><span class="pills">' + pill("conf", j.confidence) + (j.direction ? pill("dir", j.direction) : "") + "</span>" +
+        inline(j.claim) + srcLinks(j.source_ids) + '</div><div class="im">' + inline(j.implication) + "</div></li>";
+    }).join("") + "</ul></div>";
+  }
+  function flagChips(fl){
+    var ks = Object.keys(fl || {});
+    if(!ks.length) return "";
+    return '<div class="blk"><h5>' + esc(t("flags")) + '</h5><div class="chips">' + ks.map(function(k){
+      var v = fl[k], s = v == null ? "—" : (typeof v === "boolean" ? (v ? t("yes") : t("no")) : (isNum(v) ? fmtAuto(v) : String(v)));
+      return '<span class="chip"><span class="k">' + esc(k) + '</span><span class="v">' + esc(s) + "</span></span>";
+    }).join("") + "</div></div>";
+  }
+  function simpleTable(title, cols, rows){
+    if(!rows.length) return "";
+    return '<div class="blk"><h5>' + esc(title) + '</h5><div class="scroll"><table class="t"><thead><tr>' + cols.map(function(c){
+      return "<th" + (c.num ? ' class="num"' : "") + ">" + esc(c.h) + "</th>"; }).join("") + "</tr></thead><tbody>" +
+      rows.map(function(r){ return "<tr>" + r.map(function(cell, i){ return "<td" + (cols[i].num ? ' class="num"' : (cols[i].nw ? ' class="nw"' : "")) + ">" + cell + "</td>"; }).join("") + "</tr>"; }).join("") +
+      "</tbody></table></div></div>";
+  }
+  function dimSpecial(key, d){
+    var h = "";
+    if(key === "segments_products"){
+      h += simpleTable(t("segs"), [{h: t("s_name")}, {h: t("s_period"), nw: 1}, {h: t("s_rev"), num: 1}, {h: t("s_growth"), num: 1}, {h: t("s_oi"), num: 1}, {h: t("s_share"), num: 1}, {h: t("f_src")}],
+        (d.segments || []).map(function(s){
+          return [esc(s.name) + (s.note ? '<span class="sub">' + inline(s.note) + "</span>" : ""), '<span class="mut">' + esc(s.period) + "</span>",
+            fmtUnit(s.revenue, s.unit), isNum(s.growth_yoy_pct) ? fmtSigned(s.growth_yoy_pct, 1, "%") : "—",
+            isNum(s.operating_income) ? fmtUnit(s.operating_income, s.unit) : "—", isNum(s.share_of_revenue_pct) ? fmt(s.share_of_revenue_pct, 1) + "%" : "—", srcLinks(s.source_id)];
+        }));
+    }
+    if(key === "financials_trend"){ h += finBlock() + edgarBlock(); }
+    if(key === "management_governance_capital_allocation"){
+      h += simpleTable(t("people"), [{h: t("p_name"), nw: 1}, {h: t("p_role")}, {h: t("p_since"), nw: 1}, {h: t("f_src")}],
+        (d.people || []).map(function(p){
+          return ["<b>" + esc(p.name) + "</b>", esc(p.role) + (p.note ? '<span class="sub">' + inline(p.note) + "</span>" : ""), '<span class="mut">' + esc(p.since || "—") + "</span>", srcLinks(p.source_id)];
+        }));
+    }
+    if(key === "risks"){
+      h += simpleTable(t("risks"), [{h: t("r_risk")}, {h: t("r_prob"), nw: 1}, {h: t("r_sev"), nw: 1}, {h: t("r_watch")}, {h: t("f_src")}],
+        (d.risk_items || []).map(function(r){
+          return [inline(r.risk) + (r.mitigant ? '<span class="sub">' + esc(t("r_mit")) + ": " + inline(r.mitigant) + "</span>" : ""),
+            pill("lv", r.probability, t("lv_" + r.probability)), pill("lv", r.severity, t("lv_" + r.severity)), '<span class="dim">' + inline(r.watch_signal || "—") + "</span>", srcLinks(r.source_ids)];
+        }));
+    }
+    if(key === "catalysts_calendar"){
+      var ev = (d.events || []).slice().sort(function(a, b){ return String(a.date).localeCompare(String(b.date)); });
+      var q = Q(), ec = q && q.earnings_calendar;
+      var rows = ev.map(function(e){
+        return ['<span class="nw">' + esc(e.date) + "</span>" + (e.confirmed ? "" : '<span class="sub">' + esc(t("est")) + "</span>"),
+          inline(e.event) + (e.expected_impact ? '<span class="sub">' + inline(e.expected_impact) + "</span>" : ""),
+          '<span class="fv-pill mute">' + esc(KIND_ZH[e.kind] || e.kind) + "</span>", srcLinks(e.source_id)];
+      });
+      if(ec && ec.next_earnings_date) rows.unshift(['<span class="nw">' + esc(ec.next_earnings_date) + "</span><span class=\"sub\">" + esc(ec.confirmed ? t("confirmed") : t("est")) + "</span>",
+        esc(t("next_earn")) + '<span class="sub">' + esc(ec.source) + "</span>", '<span class="fv-pill info">' + esc(KIND_ZH.earnings) + "</span>", ""]);
+      h += simpleTable(t("events"), [{h: t("e_date"), nw: 1}, {h: t("e_event")}, {h: t("e_kind"), nw: 1}, {h: t("f_src")}], rows);
+    }
+    if(key === "quant_unquant_watchlist"){
+      h += simpleTable(t("qm"), [{h: t("q_name")}, {h: t("q_cur"), num: 1}, {h: t("q_thr")}, {h: t("q_status"), nw: 1}, {h: t("f_src")}],
+        (d.quant_metrics || []).map(function(m){
+          return [inline(m.name) + (m.period ? '<span class="sub">' + esc(m.period) + "</span>" : "") + (m.note ? '<span class="sub">' + inline(m.note) + "</span>" : ""),
+            fmtUnit(m.current, m.unit), '<span class="dim">' + inline(m.threshold) + "</span>", pill("qs", m.status), srcLinks(m.source_id)];
+        }));
+      var uq = d.unquant_observations || [];
+      if(uq.length) h += '<div class="blk"><h5>' + esc(t("uq")) + '</h5><ul class="judg">' + uq.map(function(o){
+        return '<li><div class="cl"><span class="pills">' + pill("conf", o.confidence) + (o.direction ? pill("dir", o.direction) : "") + '</span><span class="mut">' + esc(o.date) + "</span> " +
+          inline(o.observation) + srcLinks(o.source_ids) + '</div><div class="im" style="--x:0">' + inline(o.evidence) + "</div></li>";
+      }).join("") + "</ul></div>";
+    }
+    return h;
+  }
+  function renderDims(){
+    var wide = window.matchMedia("(min-width: 761px)").matches;
+    var h = secHead("sec_dims", "cap_dims");
+    DIMS.forEach(function(k, i){
+      var d = DOC.dimensions[k]; if(!d) return;
+      h += '<details class="dim" id="dim-' + k + '"' + (wide && i < 3 ? " open" : "") + ">" + dimSummary(k, d) + '<div class="dim-b" data-k="' + k + '"></div></details>';
+    });
+    var sec = document.getElementById("sec-dims");
+    sec.innerHTML = h; sec.hidden = false;
+    sec.querySelectorAll("details.dim").forEach(function(det){
+      if(det.open) fillDim(det);
+      det.addEventListener("toggle", function(){ if(det.open) fillDim(det); });
+    });
+  }
+  function fillDim(det){
+    var body = det.querySelector(".dim-b");
+    if(body.getAttribute("data-done")) return;
+    var k = body.getAttribute("data-k"), d = DOC.dimensions[k];
+    var h = "";
+    if(d.since_last_change) h += '<div class="slc">' + inline(d.since_last_change) + "</div>";
+    h += md(d.narrative_md) + dimSpecial(k, d) + factsTable(d.facts) + judgList(d.judgments) + flagChips(d.quant_flags);
+    if(k === "overview_business_model"){
+      h += judgList(DOC.summary.thesis_bull, lang() === "en" ? "Bull thesis" : "多方论点") + judgList(DOC.summary.thesis_bear, lang() === "en" ? "Bear thesis" : "空方论点");
+      if(DOC.summary.stance_note) h += '<p class="note">' + inline(DOC.summary.stance_note) + "</p>";
+    }
+    body.innerHTML = h;
+    body.setAttribute("data-done", "1");
+    var fb = body.querySelector("#finBox");
+    if(fb) finCharts(fb);
+  }
+
+  /* ================================================================ 跟踪日志 */
+  var LOG_OPEN = false;
+  function logItems(){
+    var items = [], q = Q();
+    (DOC.tracking_log || []).forEach(function(e){
+      items.push({date: e.date, cat: "research", type: e.type, title: e.title, detail: e.detail, src: e.source_id, impact: e.impact_on_thesis});
+    });
+    (q && q.filings_recent || []).forEach(function(f){
+      var items8 = (f.items || "").split(",").map(function(x){ return x.trim(); }).filter(Boolean).map(function(x){ return ITEM_ZH[x] ? x + " " + ITEM_ZH[x] : x; });
+      items.push({date: f.date, cat: "filing", type: "filing", title: (FORM_ZH[f.form] || f.form) + (items8.length ? " · " + items8.join(" / ") : ""),
+        url: f.url, detail: f.report_date && f.report_date !== f.date ? (lang() === "en" ? "Period/report date " : "报告期/事件日 ") + f.report_date : ""});
+    });
+    (q && q.news_headlines || []).forEach(function(n){
+      items.push({date: n.date, cat: "news", type: "news", title: n.title, url: n.url, detail: n.publisher});
+    });
+    items.sort(function(a, b){ return a.date < b.date ? 1 : a.date > b.date ? -1 : 0; });
+    return items;
+  }
+  function renderLog(){
+    var all = logItems(), cats = ["all","research","filing","news"];
+    var cnt = {all: all.length, research: 0, filing: 0, news: 0};
+    all.forEach(function(x){ cnt[x.cat]++; });
+    var list = all.filter(function(x){ return LOGF === "all" || x.cat === LOGF; });
+    var shown = LOG_OPEN ? list : list.slice(0, 20);
+    var h = secHead("sec_log", "cap_log") + '<div class="filters" role="group">' + cats.map(function(c){
+      return '<button type="button" data-f="' + c + '" class="' + (LOGF === c ? "on" : "") + '" aria-pressed="' + (LOGF === c) + '">' + esc(t("log_" + c)) + '<span class="n">' + cnt[c] + "</span></button>";
+    }).join("") + '</div><ol class="tl">';
+    shown.forEach(function(x){
+      var title = x.url ? '<a href="' + esc(x.url) + '" target="_blank" rel="noopener">' + esc(x.title) + "</a>" : inline(x.title);
+      var pills = '<span class="fv-pill mute">' + esc(TYPE_ZH[x.type] || x.type) + "</span>" + (x.impact ? " " + pill("imp", x.impact) : "");
+      var long = x.detail && x.detail.length > 180;
+      h += '<li><span class="dt">' + esc(x.date) + '</span><div><div class="ti"><span class="pills">' + pills + "</span>" + title + (x.src ? srcLinks(x.src) : "") + "</div>" +
+        (x.detail ? '<div class="de' + (long ? " clamp" : "") + '">' + inline(x.detail) + "</div>" + (long ? '<button type="button" class="x">' + esc(t("detail_more")) + "</button>" : "") : "") + "</div></li>";
+    });
+    h += "</ol>";
+    if(list.length > 20) h += '<button type="button" class="more-btn" id="logMore">' + esc(LOG_OPEN ? t("wc_less") : t("log_more", {n: list.length})) + "</button>";
+    var sec = document.getElementById("sec-log");
+    sec.innerHTML = h; sec.hidden = false;
+    sec.querySelectorAll(".filters button").forEach(function(b){ b.addEventListener("click", function(){ LOGF = b.getAttribute("data-f"); LOG_OPEN = false; renderLog(); }); });
+    var mb = document.getElementById("logMore");
+    if(mb) mb.addEventListener("click", function(){ LOG_OPEN = !LOG_OPEN; renderLog(); });
+    sec.querySelectorAll("button.x").forEach(function(b){ b.addEventListener("click", function(){
+      var de = b.previousElementSibling, open = de.classList.toggle("clamp");
+      b.textContent = open ? t("detail_more") : t("detail_less");
+    }); });
+  }
+
+  /* ================================================================ 来源 */
+  function renderSources(){
+    var ss = DOC.meta.sources || [];
+    var h = secHead("sec_sources", "cap_sources") + '<ol class="src">';
+    ss.forEach(function(s){
+      h += '<li id="src-' + s.id + '"><span class="id">[' + s.id + ']</span><div><div class="tt"><a href="' + esc(s.url) + '" target="_blank" rel="noopener">' + esc(s.title) + "</a>" +
+        '<span class="fv-pill mute">' + esc(SRC_ZH[s.type] || s.type) + '</span></div><div class="mt">' + esc(s.publisher) +
+        (s.date ? " · " + esc(t("src_pub")) + " " + esc(s.date) : "") + " · " + esc(t("src_acc")) + " " + esc(s.accessed) + (s.edgar_ref ? " · " + esc(s.edgar_ref) : "") + "</div>" +
+        (s.note ? '<div class="nt">' + inline(s.note) + "</div>" : "") + "</div></li>";
+    });
+    h += "</ol>";
+    var sec = document.getElementById("sec-sources");
+    sec.innerHTML = h; sec.hidden = false;
+  }
+
+  var SRCK = {zh:{edgar_submissions:"EDGAR 公告清单", edgar_companyfacts:"EDGAR 财务数据", prices:"价格", yf_info:"Yahoo 概况",
+      yf_estimates:"Yahoo 一致预期", yf_news:"Yahoo 新闻"},
+    en:{edgar_submissions:"EDGAR filings", edgar_companyfacts:"EDGAR financials", prices:"Prices", yf_info:"Yahoo profile",
+      yf_estimates:"Yahoo consensus", yf_news:"Yahoo news"}};
+  function renderFoot(){
+    var q = Q(), src = q && q.sources ? (lang() === "en" ? "Quant inputs fetched: " : "量化层取数: ") + Object.keys(q.sources).map(function(k){
+      var s = q.sources[k];
+      return (SRCK[lang()][k] || k) + " " + hm(s.fetched_at) + (s.ok ? "" : (lang() === "en" ? " (failed, cached)" : " (本次失败, 用缓存)"));
+    }).join("; ") : "";
+    document.getElementById("foot").innerHTML = "<p>" + esc(t("foot1")) + "</p><p>" + esc(t("foot2")) + "</p><p>" + esc(t("foot3")) + "</p>" +
+      (src ? '<p class="mut">' + esc(src) + "</p>" : "");
+  }
+
+  /* ================================================================ 左侧章节栏 */
+  var railObs = null;
+  function renderRail(){
+    var rail = document.getElementById("rail");
+    var h = '<a href="#top" data-go="top">' + esc(t("rail_top")) + "</a>" +
+      '<a href="#sec-changes">' + esc(t("sec_changes")) + '</a><a href="#sec-valuation">' + esc(t("sec_valuation")) + "</a>" +
+      '<div class="grp">' + esc(t("rail_dims")) + "</div>" +
+      DIMS.map(function(k){ var d = DOC.dimensions[k]; return d ? '<a class="sub" href="#dim-' + k + '" data-open="' + k + '">' + esc(d.title_cn) + "</a>" : ""; }).join("") +
+      '<a href="#sec-log">' + esc(t("sec_log")) + '</a><a href="#sec-sources">' + esc(t("sec_sources")) + "</a>";
+    rail.innerHTML = h;
+    if(railObs) railObs.disconnect();
+    if(!("IntersectionObserver" in window)) return;
+    var links = {};
+    rail.querySelectorAll("a[href^='#']").forEach(function(a){ links[a.getAttribute("href").slice(1)] = a; });
+    railObs = new IntersectionObserver(function(ents){
+      ents.forEach(function(en){
+        if(!en.isIntersecting) return;
+        var a = links[en.target.id]; if(!a) return;
+        rail.querySelectorAll("a.on").forEach(function(x){ x.classList.remove("on"); });
+        a.classList.add("on");
+      });
+    }, {rootMargin: "-120px 0px -65% 0px"});
+    ["sec-changes","sec-valuation","sec-log","sec-sources"].concat(DIMS.map(function(k){ return "dim-" + k; })).forEach(function(id){
+      var el = document.getElementById(id); if(el) railObs.observe(el);
+    });
+  }
+
+  /* ================================================================ 装配 */
+  function renderAll(){
+    if(window.fvShell) fvShell.applyI18n(T);
+    fixCrumb();
+    if(!INDEX) return;
+    renderTabs();
+    if(!DOC) return;
+    SRC_IDS = {};
+    (DOC.meta.sources || []).forEach(function(s){ SRC_IDS[s.id] = s.title + " — " + s.publisher; });
+    document.title = shortName(DOC.meta.name_cn) + " " + DOC.meta.ticker + " · " + t("title") + " · FairValpha";
+    CHARTS = [];
+    renderMast(); renderChanges(); renderValuation(); renderDims(); renderLog(); renderSources(); renderFoot(); renderRail();
+  }
+
+  var loadSeq = 0;
+  function loadDoc(ticker, push){
+    var c = (INDEX.companies || []).filter(function(x){ return x.ticker === ticker; })[0] || INDEX.companies[0];
+    if(!c) return;
+    CUR = c.ticker;
+    try{ localStorage.setItem("fv_deepdive_last", CUR); }catch(e){}
+    if(push !== false) try{ history.replaceState(null, "", "#" + CUR); }catch(e){}
+    renderTabs();
+    document.body.classList.add("loading");
+    var seq = ++loadSeq;
+    fetch("data/" + c.file + "?t=" + Date.now(), {cache: "no-store"})
+      .then(function(r){ if(!r.ok) throw new Error(r.status); return r.json(); })
+      .then(function(j){
+        if(seq !== loadSeq) return;
+        DOC = j; WC_OPEN = false; LOG_OPEN = false; LOGF = "all";
+        renderAll();
+        document.body.classList.remove("loading");
+        var hs = (location.hash || "").slice(1);
+        if(hs && hs.toUpperCase() !== CUR){
+          var el = document.getElementById(hs);
+          if(el && el.tagName === "DETAILS") el.open = true;
+          if(el) setTimeout(function(){ el.scrollIntoView(); }, 30);
+        }
+      })
+      .catch(function(e){
+        if(seq !== loadSeq) return;
+        document.body.classList.remove("loading");
+        document.getElementById("mast").innerHTML = '<p class="empty">' + esc(t("err_doc")) + esc(c.file) + " (" + esc(e.message) + ")</p>";
+      });
+  }
+
+  function onClick(ev){
+    var tab = ev.target.closest(".cotab");
+    if(tab){ if(tab.getAttribute("data-t") !== CUR){ loadDoc(tab.getAttribute("data-t")); window.scrollTo(0, 0); } return; }
+    var op = ev.target.closest("[data-open]");
+    if(op){
+      var det = document.getElementById("dim-" + op.getAttribute("data-open"));
+      if(det && !det.open){ det.open = true; }
+    }
+    var top = ev.target.closest("[data-go=top]");
+    if(top){ ev.preventDefault(); window.scrollTo({top: 0, behavior: "smooth"}); }
+  }
+  function onKey(ev){
+    var tab = ev.target.closest && ev.target.closest(".cotab");
+    if(!tab || (ev.key !== "ArrowRight" && ev.key !== "ArrowLeft")) return;
+    var tabs = Array.prototype.slice.call(document.querySelectorAll(".cotab")), i = tabs.indexOf(tab);
+    var nx = tabs[(i + (ev.key === "ArrowRight" ? 1 : tabs.length - 1)) % tabs.length];
+    if(nx){ nx.focus(); nx.click(); }
+  }
+  var rsT = null;
+  function onResize(){
+    clearTimeout(rsT);
+    rsT = setTimeout(function(){ CHARTS.forEach(function(c){ if(c.host && c.host.isConnected) c.fn(); }); }, 150);
+  }
+
+  function boot(){
+    fallbackHeader();
+    if(window.fvShell){
+      fvShell.onLang(renderAll);
+      fvShell.onTheme(function(){ CHARTS.forEach(function(c){ if(c.host && c.host.isConnected) c.fn(); }); });
+      var cr = document.getElementById("fvCrumb");
+      if(cr) new MutationObserver(fixCrumb).observe(cr, {childList: true, characterData: true, subtree: true});
+    }
+    if(window.fvShell) fvShell.applyI18n(T);
+    fixCrumb();
+    document.addEventListener("click", onClick);
+    document.addEventListener("keydown", onKey);
+    window.addEventListener("resize", onResize);
+    window.addEventListener("hashchange", function(){
+      var h = (location.hash || "").slice(1).toUpperCase();
+      if(INDEX && h && h !== CUR && (INDEX.companies || []).some(function(c){ return c.ticker === h; })){ loadDoc(h, false); return; }
+      var el = document.getElementById((location.hash || "").slice(1));       // 手动改成 #dim-xxx 也展开那一章
+      if(el && el.tagName === "DETAILS" && !el.open) el.open = true;
+    });
+    fetch("data/index.json?t=" + Date.now(), {cache: "no-store"})
+      .then(function(r){ if(!r.ok) throw new Error(r.status); return r.json(); })
+      .then(function(j){
+        INDEX = j;
+        var known = function(tk){ return tk && (j.companies || []).some(function(c){ return c.ticker === tk; }); };
+        var want = (location.hash || "").slice(1).toUpperCase().split(/[\/?]/)[0], last = null;
+        try{ last = localStorage.getItem("fv_deepdive_last"); }catch(e){}
+        var anchor = !known(want) && location.hash.length > 1 ? location.hash : "";
+        loadDoc(known(want) ? want : (known(last) ? last : (j.companies[0] && j.companies[0].ticker)), !anchor);
+      })
+      .catch(function(){
+        document.body.classList.remove("loading");
+        document.getElementById("mast").innerHTML = '<p class="empty">' + esc(t("err_index")) + "</p>";
+      });
+  }
+  if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot, {once: true});
+  else boot();
+})();
+</script>
+</body>
+</html>

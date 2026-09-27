@@ -1,0 +1,3 @@
+# 服务器每日 09:15 由 stock-deepdive.timer 生成 (stock-core research/deepdive/build.py), 不入库
+# (git reset --hard 才不会拿旧数据覆盖当天的量化层; 首版由 GM 本机 build 后 scp 上去)
+data/

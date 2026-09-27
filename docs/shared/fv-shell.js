@@ -1,5 +1,5 @@
 /* ============================================================================
-   fv-shell.js · FairValpha 子站共享外壳 (/lab/ /rightside/ /targets/ /strategies/)
+   fv-shell.js · FairValpha 子站共享外壳 (/lab/ /rightside/ /targets/ /strategies/ /data/ /deepdive/)
    源文件: stock-core/dashboard/fv-shell.js
    产物镜像: stock-screener/docs/shared/fv-shell.js
    规格: stock-core/design/mobile_nav_spec.md §6
@@ -14,7 +14,7 @@
    页面用法 (在引入本文件之前声明):
      <script>window.FV_SHELL_CFG={page:'lab', from:'a', markets:true};</script>
      <script src="/shared/fv-shell.js?v=1"></script>
-   page: 面包屑用哪个站名 (lab|rightside|targets|strategies)
+   page: 面包屑用哪个站名 (lab|rightside|targets|strategies|deepdive; T 表没有的键由页面自己补, 见 /data/)
    from: 无历史来源时的默认市场 ('a'|'us')
    markets: true = 渲染 A|US 分段 (双市页, 如 /lab/)
    ========================================================================== */
@@ -31,7 +31,7 @@
       brand: "FairValpha",
       back_desk: "返回工作台", back_a: "返回 A股工作台", back_us: "返回美股工作台",
       site_lab: "量化工作台", site_rightside: "右侧工作台",
-      site_targets: "分析师目标", site_strategies: "策略库",
+      site_targets: "分析师目标", site_strategies: "策略库", site_deepdive: "个股精研",
       mkt_a: "A股", mkt_us: "美股",
       theme_dark: "🌙 黑夜", theme_light: "☀️ 白天", theme_auto: "🖥️ 跟随系统",
       theme_btn_title: "点击切换：白天 / 黑夜 / 跟随系统",
@@ -42,7 +42,7 @@
       brand: "FairValpha",
       back_desk: "Back to desk", back_a: "Back to A-share desk", back_us: "Back to US desk",
       site_lab: "Quant Lab", site_rightside: "Right-side Desk",
-      site_targets: "Analyst Targets", site_strategies: "Strategies",
+      site_targets: "Analyst Targets", site_strategies: "Strategies", site_deepdive: "Deep Dives",
       mkt_a: "CN", mkt_us: "US",
       theme_dark: "🌙 Dark", theme_light: "☀️ Light", theme_auto: "🖥️ System",
       theme_btn_title: "Click to cycle: Light / Dark / System",
